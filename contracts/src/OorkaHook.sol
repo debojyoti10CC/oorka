@@ -130,6 +130,14 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     uint160 internal refSqrtPriceStored;
     uint256 internal refBlock;
 
+    // settlement price: time-weighted average of block-open ticks over the epoch (an oracle built from the pool
+    // itself). A price pushed at the end of one block and "settled" at the start of the next only gets the few
+    // seconds it actually held, not the whole epoch.
+    int256 internal tickCumulative; // sum of tick * seconds, up to lastObsTime
+    int24 internal lastObsTick; // block-open tick of the latest block that saw a swap
+    uint256 internal lastObsTime;
+    int256 internal epochStartTickCumulative;
+
     // real vault position (salt = VAULT_SALT)
     bytes32 internal constant VAULT_SALT = bytes32(uint256(type(uint256).max));
     int24 public vaultLower;
@@ -186,7 +194,7 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     // ------------------------------------------------------------------
     // Hook callbacks
     // ------------------------------------------------------------------
-    function afterInitialize(address, PoolKey calldata key, uint160, int24)
+    function afterInitialize(address, PoolKey calldata key, uint160, int24 tick)
         external
         onlyPoolManager
         returns (bytes4)
@@ -197,6 +205,8 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         poolId = key.toId();
         poolSet = true;
         epochStart = block.timestamp;
+        lastObsTick = tick;
+        lastObsTime = block.timestamp;
         return IHooks.afterInitialize.selector;
     }
 
@@ -209,9 +219,13 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         returns (bytes4, BeforeSwapDelta, uint24)
     {
         if (refBlock != block.number) {
-            (uint160 sp,,,) = poolManager.getSlot0(poolId);
+            (uint160 sp, int24 tick,,) = poolManager.getSlot0(poolId);
             refSqrtPriceStored = sp;
             refBlock = block.number;
+            // close the previous block-open tick's time segment, then open one for this block's open tick
+            tickCumulative += int256(lastObsTick) * int256(block.timestamp - lastObsTime);
+            lastObsTick = tick;
+            lastObsTime = block.timestamp;
         }
         return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
@@ -337,7 +351,8 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         if (!hasIncumbent) revert NoIncumbent();
         if (block.timestamp < epochStart + config.epochLength) revert EpochNotOver();
 
-        uint160 p = refSqrtPrice();
+        // score at the epoch's time-weighted average price, not at one block's price
+        uint160 p = settleSqrtPrice();
         uint256 n = curators.length;
         uint256[] memory growth = new uint256[](n);
 
@@ -404,6 +419,7 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         if (totalSupply > 0) vaultEpochStartSharePrice = _sharePrice(p);
         epoch += 1;
         epochStart = block.timestamp;
+        epochStartTickCumulative = _tickCumulativeNow();
     }
 
     /// @notice Collect vault fees and reinvest idle balances at the current vault range. Permissionless.
@@ -650,7 +666,28 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         return (epoch, epochStart, epochStart + config.epochLength, block.timestamp);
     }
 
-    /// @notice Price used for all accounting: the pool price at the start of the current block.
+    /// @notice Average tick of the current epoch so far, weighted by how long each block-open tick held.
+    function epochAverageTick() public view returns (int24) {
+        uint256 elapsed = block.timestamp - epochStart;
+        if (elapsed == 0) return lastObsTick;
+        int256 delta = _tickCumulativeNow() - epochStartTickCumulative;
+        int256 avg = delta / int256(elapsed);
+        // round toward negative infinity, like Uniswap's oracle
+        if (delta < 0 && delta % int256(elapsed) != 0) avg -= 1;
+        return int24(avg);
+    }
+
+    /// @notice Price `settleEpoch()` scores at: the epoch's time-weighted average of block-open prices.
+    function settleSqrtPrice() public view returns (uint160) {
+        return TickMath.getSqrtPriceAtTick(epochAverageTick());
+    }
+
+    function _tickCumulativeNow() internal view returns (int256) {
+        return tickCumulative + int256(lastObsTick) * int256(block.timestamp - lastObsTime);
+    }
+
+    /// @notice Price used for live accounting (views, deposits, withdrawals): the pool price at the start of the
+    /// current block. Settlement uses `settleSqrtPrice()` instead.
     function refSqrtPrice() public view returns (uint160) {
         if (refBlock == block.number && refSqrtPriceStored != 0) return refSqrtPriceStored;
         (uint160 sp,,,) = poolManager.getSlot0(poolId);

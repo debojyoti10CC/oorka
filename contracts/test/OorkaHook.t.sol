@@ -6,6 +6,7 @@ import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {CustomRevert} from "v4-core/libraries/CustomRevert.sol";
+import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
@@ -285,6 +286,55 @@ contract OorkaHookTest is Test, Deployers {
         hook.register("x", WIDE_L, WIDE_U, 1e18);
     }
 
+    // ---------------- settlement price ----------------
+    function _tickNow() internal view returns (int24 t) {
+        (, t,,) = _slot0();
+    }
+
+    function test_settlePriceIgnoresAPushAcrossTheBlockBoundary() public {
+        _registerBase();
+        (,, uint256 end,) = hook.epochInfo();
+        int24 fair = _tickNow();
+
+        // last block of the epoch: push the price hard
+        vm.warp(end - 12);
+        vm.roll(block.number + 1);
+        swap(key, true, -int256(5_000e18), ZERO_BYTES);
+        int24 pushed = _tickNow();
+        assertLt(pushed, fair - 1000, "price really moved");
+
+        // next block, before anyone swaps: the block-open price IS the pushed price...
+        vm.warp(end);
+        vm.roll(block.number + 1);
+        assertEq(TickMath.getTickAtSqrtPrice(hook.refSqrtPrice()), pushed);
+        // ...but settlement averages over the epoch, where the push only held for a few seconds
+        int24 avg = hook.epochAverageTick();
+        assertLt(fair - avg, 60, "settle price stays near the fair price");
+        hook.settleEpoch();
+    }
+
+    function test_settlePriceFollowsASustainedMove() public {
+        _registerBase();
+        (,, uint256 end,) = hook.epochInfo();
+        uint256 start = end - 1 hours;
+        int24 before = _tickNow();
+
+        // the market genuinely moves halfway through the epoch and stays there
+        vm.warp(start + 30 minutes);
+        vm.roll(block.number + 1);
+        swap(key, true, -int256(3_000e18), ZERO_BYTES);
+        int24 after_ = _tickNow();
+        vm.warp(start + 30 minutes + 1);
+        vm.roll(block.number + 1);
+        swap(key, false, -int256(1e9), ZERO_BYTES); // a dust swap records the new block-open tick
+
+        vm.warp(end);
+        vm.roll(block.number + 1);
+        int24 avg = hook.epochAverageTick();
+        int24 mid = int24((int256(before) + int256(after_)) / 2);
+        assertApproxEqAbs(int256(avg), int256(mid), 30, "a real move held for half the epoch counts for half");
+    }
+
     // ---------------- donations ----------------
     function test_donationsAreBlocked() public {
         _registerBase();
@@ -369,9 +419,10 @@ contract OorkaHookTest is Test, Deployers {
         assertApproxEqRel(vs, bs, 0.002e18);
 
         _nextEpoch();
+        // baselines are set at the epoch's average price, the live report reads the block-open price: close, not equal
         (, uint256 veAfter,, uint256 beAfter) = hook.benchmarkReport();
-        assertApproxEqRel(veAfter, 1e18, 1e12, "epoch baseline rolled for the vault");
-        assertApproxEqRel(beAfter, 1e18, 1e12, "and for the benchmark");
+        assertApproxEqRel(veAfter, 1e18, 0.001e18, "epoch baseline rolled for the vault");
+        assertApproxEqRel(beAfter, 1e18, 0.001e18, "and for the benchmark");
     }
 
     function test_benchmarkDoesNotUseACuratorSlot() public {

@@ -38,11 +38,11 @@ The seat holder is scored the same way as everyone else (its own paper portfolio
 | Spam the leaderboard | Bond required, max 8 curators. |
 | Carry wins earned against the old seat holder into the new reign | All streaks reset on takeover. |
 | Pump a range's score with `donate()`, which adds fee growth without any swap | The hook claims `beforeDonate` and reverts every donation to its pool (`DonationsDisabled`). |
+| Push the price at the end of block N, then call `settleEpoch()` first thing in block N+1 | Settlement scores at the epoch's **time-weighted average of block-open ticks** (`settleSqrtPrice()`), built inside the hook from `beforeSwap`. A push that held for a few seconds barely moves a 10-minute or 1-hour average. |
 
-Known limitations, said out loud:
+Known limitation, said out loud:
 
 - **Wash trading.** A curator could wash-trade to inflate fee growth at their range. Unlike a donation, it costs them the swap fee plus price impact, and the fees go to *real* liquidity in that range. Any range overlapping theirs benefits too. A production version would cap per-epoch fee credit or weight fees by unique swappers.
-- **Price pushed across a block boundary.** The block-open snapshot only happens on a block's first swap. In a block with no swap yet, the reference price is the current spot. So someone could push the price at the end of block N and call `settleEpoch()` first thing in block N+1. That costs them a block of arbitrage exposure. A production version would settle against a multi-block average or a snapshot from several blocks back.
 
 ## What the demo shows
 
@@ -204,6 +204,5 @@ NAV      = value(position + fees + cash, blockOpenPrice)    // in tUSD
 - Wallet-connected frontend for testnets (the demo uses anvil dev keys)
 - Per-epoch fee-credit caps against wash trading
 - Benchmark-relative performance fees: the seat holder earns a cut only on returns above the benchmark, which the hook already measures
-- Settle against a multi-block price average to close the cross-block push
 - Several vaults per pool with different risk mandates, all reading the same leaderboard
 - Swap-based rebalancing on migration instead of leaving the unmatched side idle
