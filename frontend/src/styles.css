@@ -475,3 +475,30 @@ input.swap-amount[aria-invalid="true"] { color: var(--color-danger); }
   .doc table { display: block; overflow-x: auto; }
 }
 .doc p code, .doc li code, .doc td code { overflow-wrap: anywhere; }
+
+/* ---------- docs figures (ported from the whitepaper) */
+.fig { margin: var(--space-10) 0; background: var(--color-surface-muted); border: 1px solid var(--color-border-default); border-radius: var(--radius-md); padding: var(--space-10); box-shadow: var(--shadow-1); overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.fig figcaption { margin-top: var(--space-6); font-size: var(--font-size-md); color: var(--color-text-secondary); line-height: 1.5; }
+.fig-box { fill: var(--color-surface-subtle); stroke: var(--color-border-strong); stroke-width: 1; }
+.fig-box.accent { stroke: var(--color-accent); fill: var(--color-accent-soft); }
+.fig-box.accent.strong { stroke-width: 2; }
+.fig-box.violet { stroke: #a98bf0; fill: rgba(169, 139, 240, 0.08); }
+.fig-box.dashed { stroke-dasharray: 5 4; }
+.fig-cell { fill: var(--color-surface-emphasis); stroke: var(--color-border-default); }
+.fig-cell.vault { stroke: var(--color-text-primary); }
+.fig-cell.probe { stroke: var(--color-accent); stroke-dasharray: 4 3; }
+.fig-t { fill: var(--color-text-primary); font-family: var(--font-family-primary); font-size: 14px; font-weight: 500; }
+.fig-t.accent, .fig-s.accent { fill: var(--color-accent); }
+.fig-s { fill: var(--color-text-secondary); font-family: var(--font-family-primary); font-size: 12px; }
+.fig-s.strong { fill: var(--color-text-primary); }
+.fig-line { stroke: var(--color-text-secondary); stroke-width: 1.4; fill: none; }
+.fig-line.dashed { stroke-dasharray: 5 4; }
+.fig-arrowhead { fill: var(--color-text-secondary); }
+.fig-life { stroke: var(--color-border-strong); stroke-dasharray: 3 4; }
+.fig-grid { stroke: var(--color-border-default); }
+.fig-axis { fill: var(--color-text-secondary); font-family: var(--font-family-mono); font-size: 11px; }
+.fig-spot { fill: none; stroke: var(--color-danger); stroke-width: 2.5; }
+.fig-twap { fill: none; stroke: var(--color-accent); stroke-width: 2.5; stroke-dasharray: 7 5; }
+.fig-bar-vault { fill: var(--color-accent); }
+.fig-bar-bench { fill: #7d7d86; }

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { REPO_URL } from "./lib/site";
+import { ArchitectureFig, ReactiveSeqFig, SettleFlowFig, TwapChart, VaultVsBenchChart } from "./Figures";
 
 const SECTIONS: [string, string][] = [
   ["overview", "Overview"],
@@ -63,6 +64,7 @@ export default function Docs() {
             vault against it.
           </li>
         </ul>
+        <ArchitectureFig />
 
         <h2 id="probes">Probe positions</h2>
         <p>
@@ -91,6 +93,7 @@ growth   = NAV_end / NAV_epochStart`}</code>
           (<code>settleSqrtPrice()</code>). The hook accumulates it in <code>beforeSwap</code>. A range change re-derives
           <code>vL</code> from the current NAV minus <code>switchCostBps</code>.
         </p>
+        <TwapChart />
 
         <h2 id="takeover">Takeover</h2>
         <ol>
@@ -104,6 +107,7 @@ growth   = NAV_end / NAV_epochStart`}</code>
             The old seat holder loses <code>slashBps</code> of their bond, paid to depositors. Every streak resets.
           </li>
         </ol>
+        <SettleFlowFig />
 
         <h2 id="fee">Performance fee</h2>
         <p>
@@ -119,6 +123,7 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
           There's no fee on losses, none for matching the passive benchmark, and none for recovering an earlier drawdown.
           Depositors keep 90% of the outperformance at the deployed 10% rate. The tests check this.
         </p>
+        <VaultVsBenchChart />
 
         <h2 id="defences">Defences</h2>
         <table>
@@ -177,6 +182,7 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
           The keeper has no special rights on the hook. A takeover settle uses under 1.5M gas, half the 3M callback
           budget.
         </p>
+        <ReactiveSeqFig />
 
         <h2 id="contracts">Contracts</h2>
         <p>
