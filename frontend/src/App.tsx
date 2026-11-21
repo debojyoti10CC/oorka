@@ -38,6 +38,7 @@ type Config = {
 
 type Snapshot = {
   price: number;
+  settlePrice: number;
   curators: CuratorRow[];
   vault: { lower: number; upper: number; liquidity: bigint; idle0: bigint; idle1: bigint; nav: bigint; supply: bigint };
   epoch: { current: number; start: number; end: number; now: number; fetchedAt: number };
@@ -68,7 +69,7 @@ export default function App() {
     if (!dep) return;
     try {
       const me = addressOf(actor);
-      const [curators, vs, ei, sp, cfg, shares, eth, usd, br] = await Promise.all([
+      const [curators, vs, ei, sp, cfg, shares, eth, usd, br, ssp] = await Promise.all([
         publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "getCurators" }),
         publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "vaultState" }),
         publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "epochInfo" }),
@@ -78,6 +79,7 @@ export default function App() {
         publicClient.readContract({ address: dep.token0, abi: ERC20_ABI, functionName: "balanceOf", args: [me] }),
         publicClient.readContract({ address: dep.token1, abi: ERC20_ABI, functionName: "balanceOf", args: [me] }),
         publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "benchmarkReport" }),
+        publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "settleSqrtPrice" }),
       ]);
       const b = br as bigint[];
       const v = vs as any[];
@@ -101,6 +103,7 @@ export default function App() {
       }));
       setSnap({
         price: sqrtPriceToPrice(sp as bigint),
+        settlePrice: sqrtPriceToPrice(ssp as bigint),
         curators: rows,
         vault: { lower: Number(v[0]), upper: Number(v[1]), liquidity: v[2], idle0: v[3], idle1: v[4], nav: v[5], supply: v[6] },
         epoch: { current: Number(e[0]), start: Number(e[1]), end: Number(e[2]), now: Number(e[3]), fetchedAt: Date.now() },
@@ -344,6 +347,10 @@ export default function App() {
           <div>
             <dt>tETH price</dt>
             <dd>{fmt(snap.price, 2)}</dd>
+          </div>
+          <div title="Settlement scores at the epoch's time-weighted average of block-open prices, so a last-second push barely moves it.">
+            <dt>Settles at (epoch avg)</dt>
+            <dd>{fmt(snap.settlePrice, 2)}</dd>
           </div>
           <div>
             <dt>Epoch {snap.epoch.current}</dt>
