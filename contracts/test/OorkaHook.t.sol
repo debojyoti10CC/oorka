@@ -71,13 +71,13 @@ contract OorkaHookTest is Test, Deployers {
             swap(key, true, -int256(size), ZERO_BYTES);
             swap(key, false, -int256(size), ZERO_BYTES);
         }
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     function _nextEpoch() internal {
         (,, uint256 end,) = hook.epochInfo();
         vm.warp(end);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         hook.settleEpoch();
     }
 
@@ -189,7 +189,7 @@ contract OorkaHookTest is Test, Deployers {
         // one-way flow pushes price far outside bob's tight range
         for (uint256 i; i < 10; ++i) {
             swap(key, true, -int256(400e18), ZERO_BYTES);
-            vm.roll(block.number + 1);
+            vm.roll(vm.getBlockNumber() + 1);
         }
         (, int24 tick,,) = _slot0();
         assertLt(tick, TIGHT_L, "price left the tight range");
@@ -217,7 +217,7 @@ contract OorkaHookTest is Test, Deployers {
         (uint256 inc,) = _registerBase();
         vm.prank(dave);
         hook.deposit(10_000e18, 10_000e18, 0);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
 
         uint256 navBefore = hook.curatorNav(inc);
         uint256 vaultBefore = hook.vaultNav();
@@ -298,14 +298,14 @@ contract OorkaHookTest is Test, Deployers {
 
         // last block of the epoch: push the price hard
         vm.warp(end - 12);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         swap(key, true, -int256(5_000e18), ZERO_BYTES);
         int24 pushed = _tickNow();
         assertLt(pushed, fair - 1000, "price really moved");
 
         // next block, before anyone swaps: the block-open price IS the pushed price...
         vm.warp(end);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         assertEq(TickMath.getTickAtSqrtPrice(hook.refSqrtPrice()), pushed);
         // ...but settlement averages over the epoch, where the push only held for a few seconds
         int24 avg = hook.epochAverageTick();
@@ -321,15 +321,15 @@ contract OorkaHookTest is Test, Deployers {
 
         // the market genuinely moves halfway through the epoch and stays there
         vm.warp(start + 30 minutes);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         swap(key, true, -int256(3_000e18), ZERO_BYTES);
         int24 after_ = _tickNow();
         vm.warp(start + 30 minutes + 1);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         swap(key, false, -int256(1e9), ZERO_BYTES); // a dust swap records the new block-open tick
 
         vm.warp(end);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
         int24 avg = hook.epochAverageTick();
         int24 mid = int24((int256(before) + int256(after_)) / 2);
         assertApproxEqAbs(int256(avg), int256(mid), 30, "a real move held for half the epoch counts for half");

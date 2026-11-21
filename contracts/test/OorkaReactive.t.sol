@@ -71,13 +71,13 @@ contract OorkaReactiveTest is Test, Deployers {
             swap(key, true, -int256(50e18), ZERO_BYTES);
             swap(key, false, -int256(50e18), ZERO_BYTES);
         }
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     function _toEpochEnd() internal {
         (,, uint256 end,) = hook.epochInfo();
         vm.warp(end);
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     function _poke() internal {
