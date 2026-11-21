@@ -132,6 +132,25 @@ That's the Unichain Sepolia PoolManager. Sepolia, Base Sepolia and Arbitrum Sepo
 
 ---
 
+## Partner integrations
+
+| Partner | What it does in Oorka | Where in the code |
+|---|---|---|
+| **Reactive Network** | Keeper-free epoch settlement. A reactive contract subscribes to Reactive's CRON events and calls back to a keeper on the hook's chain. The keeper accepts only the Reactive callback proxy plus our own RVM id, and settles the epoch once it has ended. | [`contracts/src/reactive/OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) (CRON subscription, `react()`, `Callback` emit)<br>[`contracts/src/reactive/OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) (`AbstractCallback`, `poke()` authorisation and settlement)<br>[`contracts/test/OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (7 tests) |
+
+No other partner integrations.
+
+## Credits
+
+Oorka's hook, vault, scoring, benchmark, settlement price and keeper logic were written for this project. It builds on:
+
+- **Uniswap v4** ([v4-core](https://github.com/Uniswap/v4-core), [v4-periphery](https://github.com/Uniswap/v4-periphery)):
+  - `PoolManager`, `StateLibrary`, `TickMath`, `SqrtPriceMath` and `LiquidityAmounts`;
+  - the test helpers `Deployers`, `PoolSwapTest` and `PoolModifyLiquidityTest`, used in tests and the local demo.
+- **solmate**: `ERC20` (vault shares) and `MockERC20` (test tokens).
+- **Reactive Network** [reactive-lib](https://github.com/Reactive-Network/reactive-lib): `AbstractPausableReactive` and `AbstractCallback`. The CRON subscription pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
+- **Foundry** (forge, anvil), and **viem** + **React** + **Vite** for the dashboard.
+
 ## Architecture
 
 ```
