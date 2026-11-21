@@ -30,6 +30,19 @@ jobs:
       - name: Test
         run: forge test -vv
 
+      - name: Upload build artifacts (ABIs + bytecode for the frontend and Node deploy script)
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-out
+          path: |
+            contracts/out/OorkaHook.sol/OorkaHook.json
+            contracts/out/OorkaKeeper.sol/OorkaKeeper.json
+            contracts/out/OorkaReactive.sol/OorkaReactive.json
+            contracts/out/PoolSwapTest.sol/PoolSwapTest.json
+            contracts/out/PoolModifyLiquidityTest.sol/PoolModifyLiquidityTest.json
+            contracts/out/MockERC20.sol/MockERC20.json
+          if-no-files-found: error
+
   frontend:
     name: Frontend type-check
     runs-on: ubuntu-latest
