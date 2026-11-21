@@ -85,7 +85,7 @@
 
 \begin{abstract}
 \noindent
-Curated liquidity vaults ask depositors to trust a manager whose skill cannot be verified on-chain and who is hard to replace. We present \textbf{Oorka}, a Uniswap~v4 hook that turns the manager seat of a concentrated-liquidity vault into a continuous, self-settling competition. Any strategist can challenge the incumbent by posting a bond and declaring a price range. The hook places a dust-sized \emph{probe position} at every declared range. This forces the PoolManager to track fee growth at exactly those ticks, so each strategy's performance is measured from real swap flow, with no oracle, no off-chain backtest and no capital at risk. Each curator holds a virtual \emph{paper portfolio} that is marked to a manipulation-resistant reference price. A challenger who beats the incumbent by a margin for a configurable number of consecutive epochs takes the seat. The vault's real liquidity then migrates to the winner's range in the same transaction, and part of the deposed manager's bond is paid to depositors. A passive \emph{benchmark} portfolio is scored alongside the curators, so every epoch reports on-chain whether active management beat doing nothing. Settlement prices use a time-weighted average of block-open ticks that the hook builds itself. Donations, which would inflate fee growth without trading, are rejected. Settlement is automated without off-chain keepers via Reactive Network. Auction-managed AMMs sell the manager seat to the highest bidder; Oorka makes curators \emph{earn} it.
+Curated liquidity vaults ask depositors to trust a manager whose skill cannot be verified on-chain and who is hard to replace. We present \textbf{Oorka}, a Uniswap~v4 hook that turns the manager seat of a concentrated-liquidity vault into a continuous, self-settling competition. Any strategist can challenge the incumbent by posting a bond and declaring a price range. The hook places a dust-sized \emph{probe position} at every declared range. This forces the PoolManager to track fee growth at exactly those ticks, so each strategy's performance is measured from real swap flow, with no oracle, no off-chain backtest and no capital at risk. Each curator holds a virtual \emph{paper portfolio} that is marked to a manipulation-resistant reference price. A challenger who beats the incumbent by a margin for a configurable number of consecutive epochs takes the seat. The vault's real liquidity then migrates to the winner's range in the same transaction, and part of the deposed manager's bond is paid to depositors. A passive \emph{benchmark} portfolio is scored alongside the curators, so every epoch reports on-chain whether active management beat doing nothing. The seat holder is paid a performance fee only on value created above the benchmark and the vault's high-water mark. Settlement prices use a time-weighted average of block-open ticks that the hook builds itself. Donations, which would inflate fee growth without trading, are rejected. Settlement is automated without off-chain keepers via Reactive Network. The system is deployed on Unichain Sepolia, with its reactive contract on Reactive Lasna. Auction-managed AMMs sell the manager seat to the highest bidder; Oorka makes curators \emph{earn} it.
 \end{abstract}
 
 \vspace{0.4em}
@@ -93,9 +93,10 @@ Curated liquidity vaults ask depositors to trust a manager whose skill cannot be
 \textbf{Contributions.}
 (1)~\emph{Probe positions}: a technique that uses dust liquidity and \code{getFeeGrowthInside} to measure what any hypothetical range earns, under live order flow.
 (2)~A \emph{contested curation} mechanism: epochs, margins, win streaks, bonded challengers, automatic liquidity migration and slashing.
-(3)~An on-chain \emph{benchmark report} that compares the vault with a passive range every epoch.
+(3)~An on-chain \emph{benchmark report} that compares the vault with a passive range every epoch, and a \emph{benchmark-relative performance fee} with a high-water mark that pays the manager only for real outperformance.
 (4)~A \emph{manipulation-resistant pricing layer}: block-open pricing for accounting, a hook-built epoch TWAP for settlement, and rejection of \code{donate()}.
 (5)~\emph{Keeper-free settlement} through Reactive Network CRON callbacks.
+(6)~A \emph{live testnet deployment} on Unichain Sepolia and Reactive Lasna, with a public dashboard.
 }}
 
 \tableofcontents
@@ -247,7 +248,8 @@ with margin $m$ in basis points. Wins accumulate into a streak, and a loss reset
   \node[proc,below=of d1] (p) {$\bar P \leftarrow$ epoch TWAP of block-open ticks};
   \node[proc,below=of p] (m) {for each curator: mark fees, $G_i \leftarrow \NAV_i(\bar P)/\NAV_i^{\text{start}}$};
   \node[proc,below=of m] (b) {emit \code{BenchmarkScored}(vault growth, $G_{\text{bench}}$)};
-  \node[proc,below=of b] (l) {for each challenger $i$ (not benchmark)};
+  \node[proc,below=of b,fill=amber!10,draw=amber] (fee) {pay seat holder $\phi$ of value above hurdle (new shares)};
+  \node[proc,below=of fee] (l) {for each challenger $i$ (not benchmark)};
   \node[decision,below=of l] (d2) {full epoch \&\\$G_i > G_h(1{+}m)$?};
   \node[proc,left=0.9cm of d2,minimum width=2.6cm] (w) {streak$_i$ += 1};
   \node[proc,right=0.9cm of d2,minimum width=2.6cm] (z) {streak$_i \leftarrow 0$};
@@ -261,7 +263,8 @@ with margin $m$ in basis points. Wins accumulate into a streak, and a loss reset
   \draw[arr] (d1) -- node[lbl,right]{yes} (p);
   \draw[arr] (p) -- (m);
   \draw[arr] (m) -- (b);
-  \draw[arr] (b) -- (l);
+  \draw[arr] (b) -- (fee);
+  \draw[arr] (fee) -- (l);
   \draw[arr] (l) -- (d2);
   \draw[arr] (d2) -- node[lbl,above]{yes} (w);
   \draw[arr] (d2) -- node[lbl,above]{no} (z);
@@ -292,6 +295,21 @@ A single \emph{benchmark} portfolio can be registered per pool. It is a paper po
   \qquad G_{\text{vault}} = \frac{\text{share price}(\bar P)}{\text{share price at epoch start}},
 \]
 and \code{benchmarkReport()} exposes both growths since inception and for the running epoch. The benchmark answers the depositor's real question: \emph{does the contested seat beat sitting still?}
+
+\subsection{Benchmark-relative performance fee}
+Holding the seat must be worth competing for, but the manager should be paid only for value a passive range would not have produced. At each settlement, \emph{before} any takeover, the seat holder $h$ is paid a fraction $\phi$ of the value the vault created above a hurdle. Let $p_0$ be the share price at epoch start, $p$ the share price at $\bar P$, $p_{\text{hwm}}$ the highest share price recorded at any settlement, and $S$ the share supply. The hurdle growth is
+\begin{equation}
+  H = \max\!\left(1,\; G_{\text{bench}},\; \frac{p_{\text{hwm}}}{p_0}\right),
+\end{equation}
+so there is no fee on losses, no fee for matching the benchmark, and no fee for recovering an earlier drawdown. The fee value is
+\begin{equation}
+  F = \phi \cdot \max\big(0,\; p - H p_0\big)\cdot S .
+\end{equation}
+It is paid in \emph{newly minted vault shares}, so no tokens leave the pool. Minting $s$ shares dilutes depositors by exactly $F$ when
+\begin{equation}
+  \frac{s}{S + s}\,\NAV = F \quad\Longleftrightarrow\quad s = \frac{F\, S}{\NAV - F}.
+\end{equation}
+The hook emits \code{PerformanceFee}(epoch, curator, recipient, shares, value), then raises $p_{\text{hwm}}$ to the post-fee share price. With $\phi = 10\%$, depositors keep 90\% of every unit of outperformance, and the benchmark's own return in full.
 
 % ====================================================================
 \section{Pricing and manipulation resistance}\label{sec:pricing}
@@ -354,6 +372,7 @@ Flip ranges every block to chase fees & Every change charges $s$ bps on the pape
 Join late in an epoch with a lucky streak & Eligibility requires presence for the full epoch. \\
 Carry wins against one incumbent into the next reign & All streaks reset on takeover. \\
 Spam the leaderboard & Bond $\ge$ minimum; at most 8 curators (benchmark excluded). \\
+Seat holder inflates the share price at settlement to collect a fee & Fees are computed at the epoch TWAP $\bar P$, above both the benchmark and the high-water mark, so a short push or a recovered drawdown earns nothing. \\
 \bottomrule
 \end{tabularx}
 \caption{Attacks considered and the corresponding on-chain defenses.}
@@ -436,6 +455,7 @@ Vault & \code{bytes32(type(uint256).max)} & depositor capital at the incumbent's
   \State \textsc{MarkFees}$(i)$; \quad $G_i \gets \NAV_i(\bar P) / \NAV_i^{\text{start}}$
 \EndFor
 \State emit \textsc{BenchmarkScored}$(G_{\text{vault}}(\bar P),\, G_{\text{bench}})$
+\State \textsc{ChargePerformanceFee}$(h)$ \Comment{mint $\phi$ of value above $\max(1, G_{\text{bench}}, \text{HWM})$}
 \State $best \gets \bot$
 \For{each challenger $i \ne h$, $i$ not benchmark}
   \If{joined before epoch \textbf{and} $G_i > G_h (1 + m)$} \State streak$_i \gets$ streak$_i + 1$
@@ -446,7 +466,7 @@ Vault & \code{bytes32(type(uint256).max)} & depositor capital at the incumbent's
   \State slash $\sigma \cdot$ bond$_h$ into vault; reset all streaks; $h \gets best$
   \State \textsc{MigrateVault}(range$_{best}$)
 \EndIf
-\State roll all baselines at $\bar P$; epoch $\gets$ epoch $+1$; snapshot accumulator
+\State roll all baselines at $\bar P$; update high-water mark; epoch $\gets$ epoch $+1$; snapshot accumulator
 \end{algorithmic}
 \end{algorithm}
 
@@ -457,11 +477,12 @@ Vault & \code{bytes32(type(uint256).max)} & depositor capital at the incumbent's
 \toprule
 \textbf{Parameter} & \textbf{Meaning} & \textbf{Demo value} \\
 \midrule
-$T$ & epoch length & 10 min (testnet: 1 h) \\
+$T$ & epoch length & 10 min (local and testnet) \\
 $W$ & consecutive wins needed for takeover & 2 \\
 $m$ & margin over incumbent growth & 10 bps \\
 $s$ & paper switch cost per range change & 30 bps \\
 $\sigma$ & share of deposed bond paid to depositors & 20\% \\
+$\phi$ & seat holder's performance fee above the hurdle & 10\% \\
 $\delta_{\max}$ & max spot vs block-open deviation for vault actions & 300 ticks \\
 min bond & minimum challenger bond & 100 token1 \\
 $\NAV_0$ & paper portfolio notional & 1{,}000 token1 \\
@@ -474,8 +495,9 @@ $L_p$ & probe liquidity & $10^9$ \\
 % ====================================================================
 \section{Evaluation}\label{sec:eval}
 \subsection{Test suite}
-The Foundry suite runs against a real v4 \code{PoolManager}. The cases below passed on the build before the epoch-TWAP change. The two settlement-price tests were added with that change and haven't been run yet.
+The Foundry suite has 36 tests: 29 for the hook and 7 for the Reactive keeper. It runs against a real v4 \code{PoolManager}, and continuous integration builds the contracts and runs every test on each push.
 \begin{itemize}
+  \item \textbf{Performance fee:} paid when the vault beats the benchmark, with depositors keeping 90\% of the excess; no fee when the benchmark wins; no fee on a flat epoch.
   \item \textbf{Measurement:} probes measure fees without capital; tight ranges out-earn wide ones in ranging markets; wide ranges win trending markets; out-of-range challengers never win.
   \item \textbf{Mechanism:} takeover after $W$ wins; vault migration; slashing to depositors; streak resets.
   \item \textbf{Benchmark:} starts flat; can't be moved, exited or seated; tracks the vault; uses no curator slot.
@@ -514,6 +536,31 @@ A one-command demo deploys the full system on a local chain: a tETH/tUSD pool at
 When the market trends (the demo's \emph{Pump tETH} action), price leaves Tony's $\pm3\%$ range. His probe stops earning fees and his portfolio sits fully in one token, so the wide-range curators lead the next epoch. If the trend persists for $W$ epochs, the seat moves back. No vote or operator is involved: the market regime itself decides who should manage.
 
 % ====================================================================
+\section{Testnet deployment}\label{sec:deploy}
+Oorka runs on \textbf{Unichain Sepolia} (chain 1301) against the canonical Uniswap~v4 \code{PoolManager}, with its reactive contract on \textbf{Reactive Lasna} (chain 5318007). The deployment seeds a tETH/tUSD pool with three curators, the benchmark and a vault deposit, and uses the same parameters as the local demo ($T = 10$ minutes).
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Contract} & \textbf{Address} \\
+\midrule
+\code{OorkaHook} (hook, vault, registry) & \href{https://sepolia.uniscan.xyz/address/0x86486253aC2C85CffaA711d297c64AF4eAb050A0}{\texttt{\footnotesize 0x86486253aC2C85CffaA711d297c64AF4eAb050A0}} \\
+\code{OorkaKeeper} (Reactive callback) & \href{https://sepolia.uniscan.xyz/address/0xe2816a99acc021bbe019214f96dac78e648f1509}{\texttt{\footnotesize 0xe2816a99acc021bbe019214f96dac78e648f1509}} \\
+\code{OorkaReactive} (Lasna, Cron100) & \href{https://lasna.reactscan.net/address/0x086143eb1a65bdf2754f0b9190f85de6b638cb52}{\texttt{\footnotesize 0x086143eb1a65bdf2754f0b9190f85de6b638cb52}} \\
+Uniswap v4 \code{PoolManager} & \href{https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac}{\texttt{\footnotesize 0x00b036b58a818b1bc34d502d3fe730db729e62ac}} \\
+tETH / tUSD test tokens & \texttt{\footnotesize 0x5387EeaE799738A34C982E705804Dfa95FDda26b} / \texttt{\footnotesize 0xaC150B417a0b1c76353Cf647A9434fBE49250a6C} \\
+\bottomrule
+\end{tabularx}
+\caption{Live contracts. Explorer links: Uniscan (Unichain Sepolia) and Reactscan (Lasna).}
+\label{tab:deploy}
+\end{table}
+
+\paragraph{Dashboard.} A public dashboard at \href{https://debojyoti10cc.github.io/oorka/}{\texttt{debojyoti10cc.github.io/oorka}} reads the testnet deployment. Users connect a browser wallet to register as curators, deposit, trade, and settle epochs. The same frontend runs against a local chain for the scripted demo.
+
+\paragraph{Status at the time of writing (22 November 2026).} All three Oorka contracts were confirmed on-chain. The hook had four registered portfolios (three curators and the benchmark) and was in epoch~0. That epoch had ended, but no callback from Lasna had yet reached the keeper: it had logged no \code{Settled}, \code{Idle} or \code{SettleFailed} events since deployment. Settlement does not depend on the keeper, since \code{settleEpoch()} is permissionless and the dashboard can call it. The cause had not been diagnosed at the time of writing. Candidates are relayer delivery to chain 1301 (a similar issue was reported to Reactive in August 2026) and unpaid callback debt.
+
+% ====================================================================
 \section{Related work}
 \begin{itemize}
   \item \textbf{Auction-managed AMMs}~\cite{amamm} auction the right to set fees and capture arbitrage, paying rent to LPs. Hook implementations in the UHI directory include Chronus (strategists compete on volatility forecasts), Maestro (autonomous Reactive manager) and Turnstile (anti-entrenchment throttle). These allocate the seat by \emph{willingness to pay}; Oorka allocates it by \emph{measured LP performance}.
@@ -527,13 +574,13 @@ When the market trends (the demo's \emph{Pump tETH} action), price leaves Tony's
   \item \textbf{Wash trading} remains costly but possible. Next: per-epoch fee-credit caps, or weighting by distinct swappers.
   \item \textbf{Single vault per pool.} Next: several vaults with different risk mandates reading one leaderboard.
   \item \textbf{Unmatched migration remainder} stays idle. Next: swap-based rebalancing on migration through the pool's own liquidity.
-  \item \textbf{Incentives.} Next: benchmark-relative performance fees, so the incumbent is paid only on returns above the passive benchmark the hook already measures.
-  \item \textbf{Frontend.} The demo signs with local development keys. Next: wallet-connected testnet UI.
+  \item \textbf{Single benchmark.} The hurdle is one fixed wide range. Next: let governance or depositors choose among several passive benchmarks, or a volatility-adjusted one.
+  \item \textbf{Testnet liveness.} At the time of writing, CRON callbacks from Lasna had not yet reached the keeper on Unichain Sepolia (Section~\ref{sec:deploy}). Settlement stays permissionless, so anyone can still call \code{settleEpoch()}.
 \end{itemize}
 
 % ====================================================================
 \section{Conclusion}
-Oorka replaces ``trust the manager'' with ``the manager is whoever is measurably winning''. Dust probe positions let Uniswap~v4 measure any strategy on live order flow. A small, auditable state machine turns those measurements into automatic manager selection and liquidity migration. A hook-built TWAP, block-open accounting and donation rejection make the measurements hard to game. A passive benchmark tells depositors, every epoch, whether active curation was worth it. Reactive Network keeps the whole loop running without an operator.
+Oorka replaces ``trust the manager'' with ``the manager is whoever is measurably winning''. Dust probe positions let Uniswap~v4 measure any strategy on live order flow. A small, auditable state machine turns those measurements into automatic manager selection and liquidity migration. A hook-built TWAP, block-open accounting and donation rejection make the measurements hard to game. A passive benchmark tells depositors, every epoch, whether active curation was worth it, and the manager is paid only for the part that was. Reactive Network is designed to keep the whole loop running without an operator.
 
 % ====================================================================
 \begin{thebibliography}{9}\small
