@@ -16,6 +16,7 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 \usepackage{caption}
+\usepackage{float}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{fancyhdr}
@@ -62,7 +63,7 @@
   darr/.style={arr,dashed},
   lbl/.style={font=\scriptsize,color=ink2,fill=white,inner sep=1.5pt},
   decision/.style={diamond,aspect=2.2,draw=ink,fill=amber!10,font=\small,align=center,inner sep=1pt},
-  step/.style={rectangle,rounded corners=3pt,draw=ink,fill=white,font=\small,align=center,minimum width=4.6cm,minimum height=0.85cm},
+  proc/.style={rectangle,rounded corners=3pt,draw=ink,fill=white,font=\small,align=center,minimum width=4.6cm,minimum height=0.85cm},
   term/.style={rounded rectangle,draw=accent,fill=accent!12,thick,font=\small\bfseries,minimum width=3.2cm,minimum height=0.8cm},
 }
 
@@ -224,17 +225,17 @@ with margin $m$ in basis points. Wins accumulate into a streak, and a loss reset
 \begin{tikzpicture}[node distance=0.55cm]
   \node[term] (s) {\code{settleEpoch()}};
   \node[decision,below=of s] (d1) {epoch\\over?};
-  \node[step,right=1.2cm of d1,minimum width=2.6cm] (r1) {revert\\\code{EpochNotOver}};
-  \node[step,below=of d1] (p) {$\bar P \leftarrow$ epoch TWAP of block-open ticks};
-  \node[step,below=of p] (m) {for each curator: mark fees, $G_i \leftarrow \NAV_i(\bar P)/\NAV_i^{\text{start}}$};
-  \node[step,below=of m] (b) {emit \code{BenchmarkScored}(vault growth, $G_{\text{bench}}$)};
-  \node[step,below=of b] (l) {for each challenger $i$ (not benchmark)};
+  \node[proc,right=1.2cm of d1,minimum width=2.6cm] (r1) {revert\\\code{EpochNotOver}};
+  \node[proc,below=of d1] (p) {$\bar P \leftarrow$ epoch TWAP of block-open ticks};
+  \node[proc,below=of p] (m) {for each curator: mark fees, $G_i \leftarrow \NAV_i(\bar P)/\NAV_i^{\text{start}}$};
+  \node[proc,below=of m] (b) {emit \code{BenchmarkScored}(vault growth, $G_{\text{bench}}$)};
+  \node[proc,below=of b] (l) {for each challenger $i$ (not benchmark)};
   \node[decision,below=of l] (d2) {full epoch \&\\$G_i > G_h(1{+}m)$?};
-  \node[step,left=0.9cm of d2,minimum width=2.6cm] (w) {streak$_i$ += 1};
-  \node[step,right=0.9cm of d2,minimum width=2.6cm] (z) {streak$_i \leftarrow 0$};
+  \node[proc,left=0.9cm of d2,minimum width=2.6cm] (w) {streak$_i$ += 1};
+  \node[proc,right=0.9cm of d2,minimum width=2.6cm] (z) {streak$_i \leftarrow 0$};
   \node[decision,below=1.0cm of d2] (d3) {any streak\\$\ge W$?};
-  \node[step,right=1.0cm of d3,minimum width=4.2cm,fill=accent!8,draw=accent] (t) {\textbf{Takeover}: slash $h$'s bond to\\depositors, reset all streaks,\\migrate vault to winner's range};
-  \node[step,below=of d3] (roll) {roll baselines: $\NAV^{\text{start}}_i \leftarrow \NAV_i(\bar P)$, vault share price};
+  \node[proc,right=1.0cm of d3,minimum width=4.2cm,fill=accent!8,draw=accent] (t) {\textbf{Takeover}: slash $h$'s bond to\\depositors, reset all streaks,\\migrate vault to winner's range};
+  \node[proc,below=of d3] (roll) {roll baselines: $\NAV^{\text{start}}_i \leftarrow \NAV_i(\bar P)$, vault share price};
   \node[term,below=of roll] (e) {epoch $\leftarrow$ epoch $+1$};
 
   \draw[arr] (s) -- (d1);
@@ -320,7 +321,7 @@ A price deviation $\Delta\tau$ that holds for $d$ seconds within an epoch of len
 \paragraph{Donations.} \code{donate()} adds directly to $g_{\text{global}}$ for in-range liquidity without any swap. Narrow ranges have high $\Lv$ per unit of NAV, so a donation would inflate a tight challenger's score far more than a wide incumbent's. Oorka claims the \code{beforeDonate} permission and reverts every donation to its pool.
 
 \subsection{Threat model}
-\begin{table}[h]
+\begin{table}[H]
 \centering\small
 \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{5.2cm}X}
 \toprule
@@ -349,6 +350,7 @@ Spam the leaderboard & Bond $\ge$ minimum; at most 8 curators (benchmark exclude
 
 \begin{figure}[h]
 \centering
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
   \foreach \x/\name/\col in {0/Reactive system\\contract/violet, 3.6/OorkaReactive\\(ReactVM)/violet, 7.2/Callback proxy\\(Unichain)/ink2, 10.8/OorkaKeeper/accent, 14.0/OorkaHook/accent}{
     \node[box,draw=\col,minimum width=2.6cm,font=\scriptsize] at (\x,0) {\name};
@@ -361,7 +363,7 @@ Spam the leaderboard & Bond $\ge$ minimum; at most 8 curators (benchmark exclude
   \draw[arr] (10.8,-4.2) -- ++(0.5,0) |- node[lbl,right,pos=0.25]{check proxy \& RVM id} (10.8,-4.7);
   \draw[arr] (10.8,-5.3) -- node[lbl,above]{\code{settleEpoch()} if ended} (14.0,-5.3);
   \draw[darr] (14.0,-5.9) -- node[lbl,below]{\code{Settled} / \code{SettleFailed} / \code{Idle}} (10.8,-5.9);
-\end{tikzpicture}
+\end{tikzpicture}}
 \caption{Settlement automation. The reactive contract counts CRON ticks and sends a cross-chain callback. The keeper accepts calls only from the callback proxy carrying its own reactive contract's RVM id. A failed settle is reported and retried on the next tick, so the schedule can't get stuck.}
 \label{fig:reactive}
 \end{figure}
@@ -373,7 +375,7 @@ The keeper holds no privileged role on the hook: \code{settleEpoch()} is open to
 \subsection{Hook permissions and position layout}
 Oorka requests exactly three permissions: \code{afterInitialize} (bind to a single pool, seed the price accumulator), \code{beforeSwap} (block-open snapshot and TWAP accumulation) and \code{beforeDonate} (reject donations). It never alters swap amounts or fees, so the pool remains an ordinary v4 pool for traders and routers.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering\small
 \begin{tabular}{@{}lll@{}}
 \toprule
@@ -387,7 +389,7 @@ Vault & \code{bytes32(type(uint256).max)} & depositor capital at the incumbent's
 \end{table}
 
 \subsection{Core interface}
-\begin{table}[h]
+\begin{table}[H]
 \centering\small
 \begin{tabularx}{\linewidth}{@{}l l X@{}}
 \toprule
@@ -407,7 +409,7 @@ Vault & \code{bytes32(type(uint256).max)} & depositor capital at the incumbent's
 \end{table}
 
 \subsection{Settlement in pseudocode}
-\begin{algorithm}[h]
+\begin{algorithm}[H]
 \caption{\code{settleEpoch}}
 \begin{algorithmic}[1]
 \Require block.timestamp $\ge$ epochStart $+ T$
@@ -431,7 +433,7 @@ Vault & \code{bytes32(type(uint256).max)} & depositor capital at the incumbent's
 \end{algorithm}
 
 \subsection{Parameters}
-\begin{table}[h]
+\begin{table}[H]
 \centering\small
 \begin{tabular}{@{}llr@{}}
 \toprule
