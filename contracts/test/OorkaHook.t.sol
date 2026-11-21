@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
 import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {Hooks} from "v4-core/libraries/Hooks.sol";
@@ -42,7 +42,8 @@ contract OorkaHookTest is Test, Deployers {
             switchCostBps: 30,
             slashBps: 2000,
             maxTickDeviation: 200,
-            minBond: 100e18
+            minBond: 100e18,
+            perfFeeBps: 1000
         });
         deployCodeTo("OorkaHook.sol:OorkaHook", abi.encode(manager, cfg), flags);
         hook = OorkaHook(flags);
@@ -284,6 +285,77 @@ contract OorkaHookTest is Test, Deployers {
         vm.prank(alice);
         vm.expectRevert(OorkaHook.BondTooSmall.selector);
         hook.register("x", WIDE_L, WIDE_U, 1e18);
+    }
+
+    // ---------------- performance fee ----------------
+    function test_seatHolderIsPaidOnlyForBeatingTheBenchmark() public {
+        // the seat holder runs a tight range, the benchmark sits wide; a ranging market favours tight
+        vm.prank(bob);
+        uint256 inc = hook.register("Tight Bob", TIGHT_L, TIGHT_U, 100e18);
+        vm.prank(carol);
+        hook.registerBenchmark("Benchmark", WIDE_L, WIDE_U);
+        vm.prank(dave);
+        uint256 daveShares = hook.deposit(10_000e18, 10_000e18, 0);
+
+        uint256 spStart = hook.vaultEpochStartSharePrice();
+        _trade(20, 50e18);
+        (,, uint256 end,) = hook.epochInfo();
+        vm.warp(end);
+        vm.roll(vm.getBlockNumber() + 1);
+        vm.recordLogs();
+        hook.settleEpoch();
+
+        uint256 bobShares = hook.balanceOf(bob);
+        assertGt(bobShares, 0, "seat holder earned fee shares");
+
+        // read the epoch report to check the fee is 10% of the excess over the benchmark
+        (uint256 vG, uint256 bG) = _lastBenchmarkReport();
+        assertGt(vG, bG, "vault beat the benchmark");
+        uint256 spAfter = hook.vaultEpochStartSharePrice(); // post-fee share price
+        uint256 netGrowth = spAfter * 1e18 / spStart;
+        uint256 expected = vG - (vG - bG) / 10; // depositors keep 90% of the outperformance
+        assertApproxEqRel(netGrowth, expected, 0.0005e18, "depositors keep 90% of the excess");
+        assertGt(netGrowth, bG, "depositors still beat the benchmark after the fee");
+
+        // and the depositor's own stake is worth the net growth
+        assertApproxEqRel(daveShares * spAfter / 1e18, daveShares * spStart / 1e18 * netGrowth / 1e18, 1e12);
+        assertEq(hook.incumbentId(), inc);
+    }
+
+    function test_noFeeWhenTheBenchmarkWins() public {
+        // the seat holder runs wide, the benchmark sits tight: the benchmark out-earns the vault
+        vm.prank(alice);
+        hook.register("Wide Alice", WIDE_L, WIDE_U, 100e18);
+        vm.prank(carol);
+        hook.registerBenchmark("Benchmark", TIGHT_L, TIGHT_U);
+        vm.prank(dave);
+        hook.deposit(10_000e18, 10_000e18, 0);
+
+        _trade(20, 50e18);
+        vm.recordLogs();
+        _nextEpoch();
+        (uint256 vG, uint256 bG) = _lastBenchmarkReport();
+        assertGt(vG, 1e18, "the vault did earn fees");
+        assertLt(vG, bG, "but less than the benchmark");
+        assertEq(hook.balanceOf(alice), 0, "so the seat holder earns nothing");
+    }
+
+    function test_noFeeWithoutABenchmarkOnFlatEpoch() public {
+        vm.prank(alice);
+        hook.register("Wide Alice", WIDE_L, WIDE_U, 100e18);
+        vm.prank(dave);
+        hook.deposit(10_000e18, 10_000e18, 0);
+        _nextEpoch(); // no trades: nothing earned, nothing charged
+        assertEq(hook.balanceOf(alice), 0);
+    }
+
+    function _lastBenchmarkReport() internal returns (uint256 vG, uint256 bG) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 sig = keccak256("BenchmarkScored(uint256,uint256,uint256)");
+        for (uint256 i = logs.length; i > 0; --i) {
+            if (logs[i - 1].topics[0] == sig) return abi.decode(logs[i - 1].data, (uint256, uint256));
+        }
+        revert("no BenchmarkScored");
     }
 
     // ---------------- settlement price ----------------

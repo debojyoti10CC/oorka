@@ -41,7 +41,8 @@ contract OorkaReactiveTest is Test, Deployers {
             switchCostBps: 30,
             slashBps: 2000,
             maxTickDeviation: 200,
-            minBond: 100e18
+            minBond: 100e18,
+            perfFeeBps: 1000
         });
         deployCodeTo("OorkaHook.sol:OorkaHook", abi.encode(manager, cfg), flags);
         hook = OorkaHook(flags);

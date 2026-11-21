@@ -61,7 +61,8 @@ contract DeployLocal is Script {
             switchCostBps: 30,
             slashBps: 2000,
             maxTickDeviation: 300,
-            minBond: 100e18
+            minBond: 100e18,
+            perfFeeBps: 1000
         });
         uint160 flags = uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG);
         bytes memory hookInit = abi.encodePacked(type(OorkaHook).creationCode, abi.encode(manager, cfg));

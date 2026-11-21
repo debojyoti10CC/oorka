@@ -68,6 +68,8 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     event BenchmarkRegistered(uint256 indexed id, string name, int24 lower, int24 upper);
     /// @notice Per-epoch report card: did the contested vault beat a passive range that never moves?
     event BenchmarkScored(uint256 indexed epoch, uint256 vaultGrowthWad, uint256 benchmarkGrowthWad);
+    /// @notice The seat holder was paid vault shares for beating both the benchmark and the high-water mark.
+    event PerformanceFee(uint256 indexed epoch, uint256 indexed curatorId, address indexed to, uint256 shares, uint256 value);
 
     // ------------------------------------------------------------------
     // Config
@@ -80,6 +82,7 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         uint32 slashBps; // share of a dethroned incumbent's bond paid to vault depositors
         int24 maxTickDeviation; // max |spot tick - reference tick| allowed for vault-moving actions
         uint256 minBond; // in token1
+        uint32 perfFeeBps; // seat holder's cut of vault value created above the benchmark and the high-water mark
     }
 
     struct Curator {
@@ -125,6 +128,7 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     uint256 public benchmarkId;
     uint256 public vaultStartSharePrice; // share price (WAD, token1 per share) at the first deposit
     uint256 public vaultEpochStartSharePrice; // share price at the start of the current epoch
+    uint256 public highWaterSharePrice; // best share price ever reached at a settlement, after fees
 
     // reference price: the pool price at the start of the current block (set on first swap of a block)
     uint160 internal refSqrtPriceStored;
@@ -365,10 +369,13 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
         }
 
         // the vault's real return this epoch, measured before any takeover reshuffles it
-        if (hasBenchmark) {
+        {
             uint256 vsp = _sharePrice(p);
             uint256 vGrowth = vaultEpochStartSharePrice == 0 ? WAD : vsp * WAD / vaultEpochStartSharePrice;
-            emit BenchmarkScored(epoch, vGrowth, growth[benchmarkId]);
+            uint256 bGrowth = hasBenchmark ? growth[benchmarkId] : WAD;
+            if (hasBenchmark) emit BenchmarkScored(epoch, vGrowth, bGrowth);
+            // the seat holder is paid for this epoch before the seat can change hands
+            _chargePerformanceFee(incumbentId, vsp, vGrowth, bGrowth);
         }
 
         uint256 incId = incumbentId;
@@ -416,7 +423,11 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
             if (!c.active) continue;
             c.epochStartNav = _navOf(c, p);
         }
-        if (totalSupply > 0) vaultEpochStartSharePrice = _sharePrice(p);
+        if (totalSupply > 0) {
+            uint256 sp = _sharePrice(p);
+            vaultEpochStartSharePrice = sp;
+            if (sp > highWaterSharePrice) highWaterSharePrice = sp;
+        }
         epoch += 1;
         epochStart = block.timestamp;
         epochStartTickCumulative = _tickCumulativeNow();
@@ -531,6 +542,7 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
                 uint256 sp0 = _sharePrice(p);
                 vaultStartSharePrice = sp0;
                 vaultEpochStartSharePrice = sp0;
+                highWaterSharePrice = sp0;
             }
             emit Deposited(user, paid0, paid1, shares);
             return abi.encode(shares);
@@ -768,6 +780,34 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
             (uint256 f0, uint256 f1) = _pendingVaultFees();
             nav += _value(f0, f1, p);
         }
+    }
+
+    /// @dev Pays the seat holder `perfFeeBps` of the value the vault created this epoch above a hurdle, as newly
+    /// minted vault shares. The hurdle is the highest of: flat (no fee on losses), the benchmark's return (no fee
+    /// for doing what a passive range would have done anyway), and the high-water mark (no fee for recovering an
+    /// earlier drawdown). Minting shares dilutes depositors by exactly the fee value, so no tokens leave the pool.
+    function _chargePerformanceFee(uint256 curatorId, uint256 sharePrice, uint256 vGrowth, uint256 bGrowth) internal {
+        uint256 start = vaultEpochStartSharePrice;
+        uint256 supply = totalSupply;
+        if (config.perfFeeBps == 0 || supply == 0 || start == 0) return;
+
+        uint256 hurdle = bGrowth > WAD ? bGrowth : WAD;
+        uint256 hwmGrowth = highWaterSharePrice * WAD / start;
+        if (hwmGrowth > hurdle) hurdle = hwmGrowth;
+        if (vGrowth <= hurdle) return;
+
+        uint256 hurdlePrice = start * hurdle / WAD;
+        if (sharePrice <= hurdlePrice) return;
+        uint256 nav = FullMath.mulDiv(sharePrice, supply, WAD);
+        uint256 excess = FullMath.mulDiv(sharePrice - hurdlePrice, supply, WAD);
+        uint256 fee = excess * config.perfFeeBps / 10_000;
+        if (fee == 0 || fee >= nav) return;
+
+        // shares worth `fee` after minting: s / (supply + s) * nav = fee
+        uint256 shares = FullMath.mulDiv(fee, supply, nav - fee);
+        address to = curators[curatorId].owner;
+        _mint(to, shares);
+        emit PerformanceFee(epoch, curatorId, to, shares, fee);
     }
 
     /// @dev token1 value of one vault share (WAD), fees included
