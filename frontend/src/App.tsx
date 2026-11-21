@@ -381,8 +381,8 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="brand">
-          <h1 className="wordmark">Oorka</h1>
-          <p className="tagline">The vault's curator seat, contested on-chain.</p>
+          <h1 className="wordmark">Arena</h1>
+          <p className="tagline">The vault's curator seat, contested live.</p>
         </div>
         <dl className="vitals">
           <div>
