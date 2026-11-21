@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import App, { type View } from "./App";
+import Swap from "./Swap";
+import { WalletButton } from "./lib/wallet";
 import Landing from "./Landing";
 import Docs from "./Docs";
 import "./styles.css";
@@ -8,8 +10,10 @@ import "./styles.css";
 import { REPO_URL } from "./lib/site";
 
 // Hash routes, so the site works on any static host (GitHub Pages included) with no server rewrites.
-type Route = "home" | "arena" | "docs";
-const routeOf = (hash: string): Route => (hash.startsWith("#/arena") ? "arena" : hash.startsWith("#/docs") ? "docs" : "home");
+type Route = "home" | "swap" | "arena" | "vault" | "curate" | "docs";
+const ROUTES: Route[] = ["swap", "arena", "vault", "curate", "docs"];
+const routeOf = (hash: string): Route => ROUTES.find((r) => hash.startsWith(`#/${r}`)) ?? "home";
+const LABEL: Record<Route, string> = { home: "Home", swap: "Swap", arena: "Arena", vault: "Vault", curate: "Curate", docs: "Docs" };
 
 function Shell() {
   const [route, setRoute] = useState<Route>(routeOf(window.location.hash));
@@ -23,8 +27,7 @@ function Shell() {
     return () => window.removeEventListener("hashchange", on);
   }, []);
   useEffect(() => {
-    document.title =
-      route === "arena" ? "Arena · Oorka" : route === "docs" ? "Docs · Oorka" : "Oorka: the curator seat, earned on-chain";
+    document.title = route === "home" ? "Oorka: the curator seat, earned on-chain" : `${LABEL[route]} · Oorka`;
   }, [route]);
 
   return (
@@ -39,20 +42,28 @@ function Shell() {
             Oorka
           </a>
           <div className="nav-links">
-            <a href="#/arena" aria-current={route === "arena" ? "page" : undefined}>
-              Arena
-            </a>
-            <a href="#/docs" aria-current={route === "docs" ? "page" : undefined}>
-              Docs
-            </a>
-            <a href={REPO_URL} target="_blank" rel="noreferrer">
+            {ROUTES.map((r) => (
+              <a key={r} href={`#/${r}`} aria-current={route === r ? "page" : undefined}>
+                {LABEL[r]}
+              </a>
+            ))}
+            <a className="ext" href={REPO_URL} target="_blank" rel="noreferrer">
               GitHub
             </a>
           </div>
+          <WalletButton />
         </div>
       </nav>
       <div id="main" tabIndex={-1} style={{ outline: "none" }}>
-        {route === "arena" ? <App /> : route === "docs" ? <Docs /> : <Landing />}
+        {route === "home" ? (
+          <Landing />
+        ) : route === "docs" ? (
+          <Docs />
+        ) : route === "swap" ? (
+          <Swap />
+        ) : (
+          <App key={route} view={route as View} />
+        )}
       </div>
       <footer className="site-foot">
         <div className="site-foot-inner">

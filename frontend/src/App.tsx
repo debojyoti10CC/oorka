@@ -11,8 +11,6 @@ import {
   addressOf,
   addressUrl,
   chain,
-  connectWallet,
-  hasInjectedWallet,
   loadDeployments,
   publicClient,
   readableError,
@@ -32,6 +30,14 @@ import {
   toWad,
 } from "./lib/math";
 import { Lanes, colorOf, type CuratorRow } from "./Lanes";
+import { useWallet } from "./lib/wallet";
+
+export type View = "arena" | "vault" | "curate";
+const TITLES: Record<View, [string, string]> = {
+  arena: ["Arena", "Every curator's range, scored live. The vault follows the winner."],
+  vault: ["Vault", "Deposit once. Whoever holds the seat manages it, and must beat the benchmark to get paid."],
+  curate: ["Curate", "Declare a range, post a bond, and prove it on real swaps before you touch anyone's money."],
+};
 
 type Config = {
   epochLength: number;
@@ -57,7 +63,7 @@ type Snapshot = {
 
 type LogItem = { key: string; block: bigint; text: string; tone?: "win" | "plain" };
 
-export default function App() {
+export default function App({ view = "arena" }: { view?: View }) {
   const [dep, setDep] = useState<Deployments | null>(null);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [actor, setActor] = useState<number>(ACTORS[0].slot);
@@ -66,7 +72,7 @@ export default function App() {
   const [events, setEvents] = useState<any[]>([]);
   const [history, setHistory] = useState<Record<number, number[]>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [wallet, setWallet] = useState<Address | null>(null);
+  const wallet = useWallet();
   const logCursor = useRef<bigint | null>(null);
   const [, tick] = useState(0);
 
@@ -142,7 +148,7 @@ export default function App() {
     } catch (err) {
       setLoadError(readableError(err));
     }
-  }, [dep, actor]);
+  }, [dep, actor, wallet]);
 
   const logBusy = useRef(false);
   const refreshLog = useCallback(async () => {
@@ -381,8 +387,8 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="brand">
-          <h1 className="wordmark">Arena</h1>
-          <p className="tagline">The vault's curator seat, contested live.</p>
+          <h1 className="wordmark">{TITLES[view][0]}</h1>
+          <p className="tagline">{TITLES[view][1]}</p>
         </div>
         <dl className="vitals">
           <div>
@@ -402,32 +408,7 @@ export default function App() {
             <dd style={{ color: incumbent ? colorOf(incumbent) : undefined }}>{incumbent?.name ?? "nobody"}</dd>
           </div>
         </dl>
-        {IS_WALLET ? (
-          <div className="actor">
-            <span>{chain.name}</span>
-            {wallet ? (
-              <a className="addr" href={addressUrl(wallet)} target="_blank" rel="noreferrer">
-                {wallet.slice(0, 6)}…{wallet.slice(-4)}
-              </a>
-            ) : (
-              <button
-                className="primary"
-                disabled={!hasInjectedWallet()}
-                title={hasInjectedWallet() ? "" : "No browser wallet found. You can still watch read-only."}
-                onClick={() =>
-                  connectWallet()
-                    .then((a) => {
-                      setWallet(a);
-                      refresh();
-                    })
-                    .catch((e) => setToast({ text: readableError(e), tone: "err" }))
-                }
-              >
-                {hasInjectedWallet() ? "Connect wallet" : "Read-only (no wallet)"}
-              </button>
-            )}
-          </div>
-        ) : (
+        {!IS_WALLET && (
           <label className="actor">
             <span>Acting as</span>
             <select value={actor} onChange={(e) => setActor(Number(e.target.value))}>
@@ -441,6 +422,8 @@ export default function App() {
         )}
       </header>
 
+      {view !== "arena" && <Status busy={busy} toast={toast} />}
+      {view === "arena" && (
       <section className="stage">
         <div className="stage-head">
           <h2>The lanes</h2>
@@ -479,9 +462,11 @@ export default function App() {
         </div>
         <Status busy={busy} toast={toast} />
       </section>
+      )}
 
-      <div className="grid">
+      <div className={view === "arena" ? "grid arena" : "grid flip"}>
         <div className="col">
+        {view !== "vault" && (
         <section className="panel standings">
           <h2>Standings</h2>
           <p className="muted small">
@@ -538,7 +523,9 @@ export default function App() {
             </tbody>
           </table>
         </section>
+        )}
 
+        {view !== "curate" && (
         <section className="panel log">
           <h2>On-chain record</h2>
           {log.length === 0 && <p className="muted small">Nothing yet.</p>}
@@ -551,8 +538,11 @@ export default function App() {
             ))}
           </ol>
         </section>
+        )}
         </div>
+        {view !== "arena" && (
         <div className="col">
+        {view === "vault" && (
         <section className="panel">
           <h2>Vault</h2>
           <div className="figures">
@@ -575,7 +565,9 @@ export default function App() {
             ))}
           </div>
         </section>
+        )}
 
+        {view === "curate" && (
         <section className="panel">
           <h2>{mine.length ? "Your seat in the arena" : "Enter the arena"}</h2>
           {mine.length ? (
@@ -585,8 +577,11 @@ export default function App() {
           ) : (
             <RegisterForm price={snap.price} busy={!!busy} minBond={fromWad(snap.config.minBond)} onRegister={register} />
           )}
+          {noSigner && <p className="muted small">Connect a wallet (top right) to enter or manage a range.</p>}
         </section>
+        )}
         </div>
+        )}
       </div>
 
       <footer className="foot muted small">
