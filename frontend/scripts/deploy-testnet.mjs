@@ -107,6 +107,7 @@ log(`chain ${chainId}  deployer ${me}  balance ${Number(balance) / 1e18} ETH`);
 if (balance < parseEther("0.01")) throw new Error("Deployer needs at least 0.01 ETH on this chain. Fund it from a faucet first.");
 if (((await pub.getCode({ address: POOL_MANAGER })) ?? "0x").length <= 2) throw new Error(`No PoolManager at ${POOL_MANAGER}`);
 
+const deployBlock = await pub.getBlockNumber(); // the dashboard reads events from here on
 log("routers");
 const swapRouter = await deploy(Swap, [POOL_MANAGER], "PoolSwapTest");
 const lpRouter = await deploy(Lp, [POOL_MANAGER], "PoolModifyLiquidityTest");
@@ -219,6 +220,7 @@ const out = {
   tickSpacing: TICK_SPACING,
   deployer: me,
   deployedAt: new Date().toISOString(),
+  deployBlock: Number(deployBlock),
 };
 const file = path.resolve(process.cwd(), `public/deployments.${chainId}.json`);
 fs.mkdirSync(path.dirname(file), { recursive: true });

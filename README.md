@@ -8,6 +8,24 @@ Built for the UHI11 Hookathon theme, **Active Management & Curation**. It hits t
 
 ![Takeover](docs/takeover.png)
 
+## Live deployment (Unichain Sepolia + Reactive Lasna)
+
+| Contract | Address |
+|---|---|
+| OorkaHook (hook + vault + curator registry) | [`0x86486253aC2C85CffaA711d297c64AF4eAb050A0`](https://sepolia.uniscan.xyz/address/0x86486253aC2C85CffaA711d297c64AF4eAb050A0) |
+| OorkaKeeper (Reactive callback, settles epochs) | [`0xe2816a99acc021bbe019214f96dac78e648f1509`](https://sepolia.uniscan.xyz/address/0xe2816a99acc021bbe019214f96dac78e648f1509) |
+| OorkaReactive (CRON subscriber, on Reactive Lasna) | [`0x086143eb1a65bdf2754f0b9190f85de6b638cb52`](https://lasna.reactscan.net/address/0x086143eb1a65bdf2754f0b9190f85de6b638cb52) |
+| Uniswap v4 PoolManager (Unichain Sepolia) | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
+| tETH / tUSD test tokens | [`0x5387…a26b`](https://sepolia.uniscan.xyz/address/0x5387EeaE799738A34C982E705804Dfa95FDda26b) / [`0xaC15…0a6C`](https://sepolia.uniscan.xyz/address/0xaC150B417a0b1c76353Cf647A9434fBE49250a6C) |
+
+The pool is tETH/tUSD at about 3,000. It is seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit. Epochs last 10 minutes, and the Reactive CRON contract pokes the keeper about every 12 minutes. All addresses are in [`frontend/public/deployments.1301.json`](frontend/public/deployments.1301.json).
+
+Run the dashboard against it with any browser wallet. Test tokens are minted from the app.
+
+```bash
+cd frontend && npm install && npx vite --mode unichain
+```
+
 ---
 
 ## The problem

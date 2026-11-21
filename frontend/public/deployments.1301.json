@@ -1,0 +1,25 @@
+{
+  "chainId": 1301,
+  "rpcUrl": "https://sepolia.unichain.org",
+  "poolManager": "0x00b036b58a818b1bc34d502d3fe730db729e62ac",
+  "swapRouter": "0x086143eb1a65bdf2754f0b9190f85de6b638cb52",
+  "lpRouter": "0x256b673ac10adf246123991fb04fddd4d32ca460",
+  "hook": "0x86486253aC2C85CffaA711d297c64AF4eAb050A0",
+  "keeper": "0xe2816a99acc021bbe019214f96dac78e648f1509",
+  "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1",
+  "token0": "0x5387EeaE799738A34C982E705804Dfa95FDda26b",
+  "token1": "0xaC150B417a0b1c76353Cf647A9434fBE49250a6C",
+  "fee": 3000,
+  "tickSpacing": 60,
+  "deployer": "0x0B2B7dd143294691fc41a8b3133ac7c0524918dA",
+  "deployedAt": "2026-11-21T20:41:31.167Z",
+  "reactive": {
+    "chainId": 5318007,
+    "rpcUrl": "https://lasna-rpc.rnk.dev/",
+    "contract": "0x086143eb1a65bdf2754f0b9190f85de6b638cb52",
+    "cronTopic": "Cron100",
+    "ticksPerPoke": 1,
+    "deployTx": "0x35b39c4ef14fedce6149f6962ed72e069b0e40119a84f93819fa92b773ab4d96"
+  },
+  "deployBlock": 68441232
+}
