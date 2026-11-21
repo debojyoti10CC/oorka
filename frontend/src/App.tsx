@@ -34,6 +34,7 @@ type Config = {
   switchCostBps: number;
   slashBps: number;
   minBond: bigint;
+  perfFeeBps: number;
 };
 
 type Snapshot = {
@@ -115,6 +116,7 @@ export default function App() {
           switchCostBps: Number(c[3]),
           slashBps: Number(c[4]),
           minBond: c[6],
+          perfFeeBps: Number(c[7] ?? 0),
         },
         bench: { vaultSince: fromWad(b[0]), vaultEpoch: fromWad(b[1]), benchSince: fromWad(b[2]), benchEpoch: fromWad(b[3]) },
       });
@@ -406,7 +408,8 @@ export default function App() {
           <h2>Standings</h2>
           <p className="muted small">
             Paper portfolios start at 1,000 tUSD. A challenger needs to beat the seat holder by {snap.config.marginBps / 100}% for{" "}
-            {snap.config.winStreak} epochs in a row. Changing range costs {snap.config.switchCostBps / 100}%.
+            {snap.config.winStreak} epochs in a row. Changing range costs {snap.config.switchCostBps / 100}%. The seat
+            earns {snap.config.perfFeeBps / 100}% of vault gains above the benchmark and its high-water mark.
           </p>
           <table>
             <thead>
@@ -531,6 +534,13 @@ export default function App() {
         return { key, block, text: `${name(a.id)} moved to ${fmt(tickToPrice(Number(a.lower)), 0)} to ${fmt(tickToPrice(Number(a.upper)), 0)}.` };
       case "BenchmarkRegistered":
         return { key, block, text: `Benchmark set at ${fmt(tickToPrice(Number(a.lower)), 0)} to ${fmt(tickToPrice(Number(a.upper)), 0)}. It never moves.` };
+      case "PerformanceFee":
+        return {
+          key,
+          block,
+          tone: "win",
+          text: `${name(a.curatorId)} earned a ${fmt(fromWad(a.value), 2)} tUSD performance fee for beating the benchmark.`,
+        };
       case "BenchmarkScored": {
         const v = fromWad(a.vaultGrowthWad) - 1;
         const bm = fromWad(a.benchmarkGrowthWad) - 1;
