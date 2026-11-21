@@ -178,9 +178,14 @@ tr.is-seat td { background: #eef2f6; }
 }
 
 /* ---------- vault vs benchmark */
-.bench { margin: 4px 0 10px; }
+.bench { margin: 4px 0 10px; overflow-x: auto; }
 .bench table { margin-top: 0; }
 .bench td, .bench th { padding: 6px 6px; }
 .bench .edge.pos { color: var(--win); font-weight: 700; }
 .bench .edge.neg { color: var(--err); font-weight: 700; }
 .bench p { margin-top: 6px; }
+
+/* ---------- wallet mode */
+.actor .addr { font-family: ui-monospace, monospace; font-size: 0.85rem; color: var(--ink); }
+.keeper-note { flex-basis: 100%; margin: 4px 0 0; }
+.keeper-note a { color: var(--ink); }

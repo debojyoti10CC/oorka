@@ -4,9 +4,15 @@ import {
   ACTORS,
   ERC20_ABI,
   HOOK_ABI,
+  IS_WALLET,
   MARKET_SLOT,
+  REFRESH_MS,
   SWAP_ABI,
   addressOf,
+  addressUrl,
+  chain,
+  connectWallet,
+  hasInjectedWallet,
   loadDeployments,
   publicClient,
   readableError,
@@ -60,6 +66,8 @@ export default function App() {
   const [events, setEvents] = useState<any[]>([]);
   const [history, setHistory] = useState<Record<number, number[]>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<Address | null>(null);
+  const logCursor = useRef<bigint | null>(null);
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -136,13 +144,33 @@ export default function App() {
     }
   }, [dep, actor]);
 
+  const logBusy = useRef(false);
   const refreshLog = useCallback(async () => {
-    if (!dep) return;
+    if (!dep || logBusy.current) return;
+    logBusy.current = true;
     try {
-      const events = await publicClient.getContractEvents({ address: dep.hook, abi: HOOK_ABI, fromBlock: 0n });
-      setEvents(events);
+      if (!IS_WALLET) {
+        const events = await publicClient.getContractEvents({ address: dep.hook, abi: HOOK_ABI, fromBlock: 0n });
+        setEvents(events);
+        return;
+      }
+      // public RPCs cap getLogs ranges (Unichain Sepolia: 1,000 blocks), so read the recent past in chunks
+      // once, then only the new blocks on each refresh
+      const head = await publicClient.getBlockNumber();
+      const STEP = 900n;
+      let from = logCursor.current ?? BigInt(dep.deployBlock ?? Number(head > 5_000n ? head - 5_000n : 0n));
+      const found: any[] = [];
+      while (from <= head) {
+        const to = from + STEP > head ? head : from + STEP;
+        found.push(...(await publicClient.getContractEvents({ address: dep.hook, abi: HOOK_ABI, fromBlock: from, toBlock: to })));
+        from = to + 1n;
+      }
+      logCursor.current = head + 1n;
+      if (found.length) setEvents((prev) => [...prev, ...found].slice(-200));
     } catch {
       /* log is best-effort */
+    } finally {
+      logBusy.current = false;
     }
   }, [dep]);
 
@@ -152,7 +180,7 @@ export default function App() {
     const id = setInterval(() => {
       refresh();
       refreshLog();
-    }, 2500);
+    }, REFRESH_MS);
     const clock = setInterval(() => tick((t) => t + 1), 1000);
     return () => {
       clearInterval(id);
@@ -202,9 +230,13 @@ export default function App() {
         });
         swaps++;
       };
+      // in wallet mode every swap is a wallet confirmation, so keep the bursts short
+      const rounds = IS_WALLET ? 2 : 8;
+      const pushes = IS_WALLET ? 3 : 10;
+      if (IS_WALLET) await ensureFunds(MARKET_SLOT, toWad("200"), toWad("2000000"), dep.swapRouter);
       if (mode === "range") {
         // round trips: sell some tETH, then buy exactly that much back. Price wobbles and returns, fees pile up.
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < rounds; i++) {
           const eth = toWad((15 + Math.random() * 25).toFixed(4));
           const sellFirst = i % 2 === 0;
           if (sellFirst) {
@@ -218,7 +250,7 @@ export default function App() {
         }
       } else {
         // trend: one-way flow, the price walks out of tight ranges
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < pushes; i++) {
           const eth = 4 + Math.random() * 4;
           const zeroForOne = mode === "down";
           const amount = zeroForOne ? toWad(eth.toFixed(4)) : toWad((eth * snap.price).toFixed(2));
@@ -251,9 +283,10 @@ export default function App() {
       return "Epoch settled. Scores and streaks updated.";
     });
 
-  const ensureFunds = async (slot: number, needEth: bigint, needUsd: bigint) => {
+  const ensureFunds = async (slot: number, needEth: bigint, needUsd: bigint, spender?: Address) => {
     if (!dep) return;
     const who = addressOf(slot);
+    const to = spender ?? dep.hook;
     for (const [token, need] of [
       [dep.token0, needEth],
       [dep.token1, needUsd],
@@ -264,9 +297,9 @@ export default function App() {
         address: token,
         abi: ERC20_ABI,
         functionName: "allowance",
-        args: [who, dep.hook],
+        args: [who, to],
       })) as bigint;
-      if (allowance < need) await send(slot, { address: token, abi: ERC20_ABI, functionName: "approve", args: [dep.hook, maxUint256] });
+      if (allowance < need) await send(slot, { address: token, abi: ERC20_ABI, functionName: "approve", args: [to, maxUint256] });
     }
   };
 
@@ -322,18 +355,24 @@ export default function App() {
     return (
       <main className="boot">
         <h1 className="wordmark">Oorka</h1>
-        <p>{loadError ?? "Connecting to the local chain…"}</p>
-        {loadError && <p className="muted">Start everything with <code>./demo.sh</code> from the repo root, then reload.</p>}
+        <p>{loadError ?? (IS_WALLET ? `Connecting to ${chain.name}…` : "Connecting to the local chain…")}</p>
+        {loadError && !IS_WALLET && (
+          <p className="muted">Start everything with <code>./demo.sh</code> from the repo root, then reload.</p>
+        )}
       </main>
     );
   }
 
   const incumbent = snap.curators.find((c) => c.incumbent);
   const benchmark = snap.curators.find((c) => c.benchmark && c.active);
+  const noSigner = IS_WALLET && !wallet;
   const log = events.map(describe).filter(Boolean).reverse().slice(0, 14) as LogItem[];
   const chainNow = snap.epoch.now + Math.floor((Date.now() - snap.epoch.fetchedAt) / 1000);
   const remaining = snap.epoch.end - chainNow;
-  const mine = snap.curators.filter((c) => c.active && c.owner.toLowerCase() === addressOf(actor).toLowerCase());
+  // the benchmark's owner is the zero address, which is also what a disconnected wallet reads as
+  const mine = noSigner
+    ? []
+    : snap.curators.filter((c) => c.active && !c.benchmark && c.owner.toLowerCase() === addressOf(actor).toLowerCase());
   const navNum = fromWad(snap.vault.nav);
   const sharePrice = snap.vault.supply > 0n ? navNum / fromWad(snap.vault.supply) : 1;
   const myValue = fromWad(snap.me.shares) * sharePrice;
@@ -363,16 +402,43 @@ export default function App() {
             <dd style={{ color: incumbent ? colorOf(incumbent) : undefined }}>{incumbent?.name ?? "nobody"}</dd>
           </div>
         </dl>
-        <label className="actor">
-          <span>Acting as</span>
-          <select value={actor} onChange={(e) => setActor(Number(e.target.value))}>
-            {ACTORS.map((a) => (
-              <option key={a.slot} value={a.slot}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {IS_WALLET ? (
+          <div className="actor">
+            <span>{chain.name}</span>
+            {wallet ? (
+              <a className="addr" href={addressUrl(wallet)} target="_blank" rel="noreferrer">
+                {wallet.slice(0, 6)}…{wallet.slice(-4)}
+              </a>
+            ) : (
+              <button
+                className="primary"
+                disabled={!hasInjectedWallet()}
+                title={hasInjectedWallet() ? "" : "No browser wallet found. You can still watch read-only."}
+                onClick={() =>
+                  connectWallet()
+                    .then((a) => {
+                      setWallet(a);
+                      refresh();
+                    })
+                    .catch((e) => setToast({ text: readableError(e), tone: "err" }))
+                }
+              >
+                {hasInjectedWallet() ? "Connect wallet" : "Read-only (no wallet)"}
+              </button>
+            )}
+          </div>
+        ) : (
+          <label className="actor">
+            <span>Acting as</span>
+            <select value={actor} onChange={(e) => setActor(Number(e.target.value))}>
+              {ACTORS.map((a) => (
+                <option key={a.slot} value={a.slot}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </header>
 
       <section className="stage">
@@ -387,17 +453,29 @@ export default function App() {
         <div className="controls">
           <div className="control-group">
             <span className="group-label">1. Move the market</span>
-            <button disabled={!!busy} onClick={() => simulateMarket("range")}>Trade in a range</button>
-            <button disabled={!!busy} onClick={() => simulateMarket("up")}>Pump tETH</button>
-            <button disabled={!!busy} onClick={() => simulateMarket("down")}>Dump tETH</button>
+            <button disabled={!!busy || noSigner} onClick={() => simulateMarket("range")}>Trade in a range</button>
+            <button disabled={!!busy || noSigner} onClick={() => simulateMarket("up")}>Pump tETH</button>
+            <button disabled={!!busy || noSigner} onClick={() => simulateMarket("down")}>Dump tETH</button>
           </div>
           <div className="control-group">
             <span className="group-label">2. Close the epoch</span>
-            <button disabled={!!busy} onClick={skipToEpochEnd}>Skip to epoch end</button>
-            <button className="primary" disabled={!!busy || remaining > 0} onClick={settle}>
+            {!IS_WALLET && (
+              <button disabled={!!busy} onClick={skipToEpochEnd}>Skip to epoch end</button>
+            )}
+            <button className="primary" disabled={!!busy || remaining > 0 || noSigner} onClick={settle}>
               Settle epoch {snap.epoch.current}
             </button>
           </div>
+          {IS_WALLET && dep.reactive && (
+            <p className="muted small keeper-note">
+              No keeper bot: a Reactive Network CRON contract on Lasna (
+              <code>{dep.reactive.contract.slice(0, 8)}…</code>) calls{" "}
+              <a href={addressUrl(dep.keeper ?? "")} target="_blank" rel="noreferrer">
+                OorkaKeeper
+              </a>{" "}
+              about every 12 minutes, which settles ended epochs on its own. Anyone can also settle by hand.
+            </p>
+          )}
         </div>
         <Status busy={busy} toast={toast} />
       </section>
@@ -512,8 +590,20 @@ export default function App() {
       </div>
 
       <footer className="foot muted small">
-        Local demo on anvil. Hook at <code>{dep.hook}</code>. Each curator's range carries a dust probe position so the
-        PoolManager tracks fee growth at those exact ticks.
+        {IS_WALLET ? (
+          <>
+            Live on {chain.name}. Hook at{" "}
+            <a href={addressUrl(dep.hook)} target="_blank" rel="noreferrer">
+              <code>{dep.hook}</code>
+            </a>
+            . Test tokens are free to mint from the app.{" "}
+          </>
+        ) : (
+          <>
+            Local demo on anvil. Hook at <code>{dep.hook}</code>.{" "}
+          </>
+        )}
+        Each curator's range carries a dust probe position so the PoolManager tracks fee growth at those exact ticks.
       </footer>
     </div>
   );
