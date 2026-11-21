@@ -136,7 +136,7 @@ Figure~\ref{fig:arch} shows the components. One contract, \code{OorkaHook}, is t
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
     x=1cm,y=1cm,
-    mod/.style={draw=ink!70,rounded corners=2pt,fill=white,font=\footnotesize,align=center,text width=4.4cm,minimum height=0.62cm,inner sep=3pt},
+    mod/.style={draw=ink!70,rounded corners=2pt,fill=white,font=\footnotesize,align=center,text width=5.2cm,minimum height=0.62cm,inner sep=3pt},
     cellbox/.style={mod,text width=3.8cm},
     act/.style={draw=ink,rounded corners=3pt,fill=paper,font=\small,align=center,text width=3.2cm,minimum height=1.0cm,inner sep=4pt},
     sub/.style={font=\scriptsize\color{ink2}},
@@ -144,16 +144,16 @@ Figure~\ref{fig:arch} shows the components. One contract, \code{OorkaHook}, is t
     rflow/.style={flow,dashed,color=ink2},
     elbl/.style={font=\scriptsize\ttfamily,color=ink,above,inner sep=2pt},
   ]
-  % ---------------- containers (hook: x 3.8..9.4, pool manager: x 13.0..17.6)
-  \draw[accent,thick,rounded corners=4pt,fill=accent!6] (3.8,-1.4) rectangle (9.4,3.7);
+  % ---------------- containers (hook: x 3.4..9.8, pool manager: x 13.0..17.6)
+  \draw[accent,thick,rounded corners=4pt,fill=accent!6] (3.4,-1.4) rectangle (9.8,3.7);
   \node[font=\bfseries\color{accent}] at (6.6,3.3) {OorkaHook};
   \draw[ink2,thick,rounded corners=4pt,fill=paper] (13.0,-1.4) rectangle (17.6,3.7);
   \node[font=\bfseries\color{ink}] at (15.3,3.3) {PoolManager};
 
   % ---------------- hook modules
   \node[mod] at (6.6,2.55) {Curator registry \& paper NAVs};
-  \node[mod] at (6.6,1.65) {Vault: ERC-20 shares \& idle balances};
-  \node[mod] at (6.6,0.75) {Pricing: block-open \& epoch TWAP};
+  \node[mod] at (6.6,1.65) {Vault shares \& idle balances};
+  \node[mod] at (6.6,0.75) {Block-open price \& epoch TWAP};
   \node[mod] at (6.6,-0.15) {Benchmark report};
   \node[sub] at (6.6,-0.95) {one contract, one pool};
 
@@ -167,21 +167,21 @@ Figure~\ref{fig:arch} shows the components. One contract, \code{OorkaHook}, is t
   \node[act] (dep) at (-0.6,2.4)  {Depositors\\[-1pt]{\scriptsize\color{ink2} deposit / withdraw}};
   \node[act] (inc) at (-0.6,0.8)  {Incumbent curator\\[-1pt]{\scriptsize\color{ink2} holds the seat}};
   \node[act] (cha) at (-0.6,-0.8) {Challengers\\[-1pt]{\scriptsize\color{ink2} bond + declared range}};
-  \node[act] (trd) at (-0.6,-2.8) {Traders \& arbitrageurs\\[-1pt]{\scriptsize\color{ink2} swap as usual}};
+  \node[act] (trd) at (-0.6,-2.8) {Traders\\[-1pt]{\scriptsize\color{ink2} swaps \& arbitrage}};
 
   % ---------------- automation row
   \node[act,fill=violet!8,draw=violet,text width=4.6cm] (kp) at (6.6,5.3) {OorkaKeeper\\[-1pt]{\scriptsize\color{ink2} on the hook's chain}};
   \node[act,fill=violet!8,draw=violet,text width=4.0cm] (rn) at (15.3,5.3) {Reactive Network\\[-1pt]{\scriptsize\color{ink2} CRON $\rightarrow$ OorkaReactive}};
 
   % ---------------- edges: actors -> hook
-  \draw[flow] (dep.east) -- node[elbl]{deposit}      (3.8,2.4);
-  \draw[flow] (inc.east) -- node[elbl]{declareRange} (3.8,0.8);
-  \draw[flow] (cha.east) -- node[elbl]{register}     (3.8,-0.8);
+  \draw[flow] (dep.east) -- node[elbl]{deposit}      (3.4,2.4);
+  \draw[flow] (inc.east) -- node[elbl]{declareRange} (3.4,0.8);
+  \draw[flow] (cha.east) -- node[elbl]{register}     (3.4,-0.8);
 
   % ---------------- edges: hook <-> pool manager
-  \draw[rflow] (13.0,2.6) -- node[elbl]{beforeSwap}         (9.4,2.6);
-  \draw[flow]  (9.4,1.3)  -- node[elbl]{modifyLiquidity}    (13.0,1.3);
-  \draw[rflow] (13.0,0.0) -- node[elbl]{getFeeGrowthInside} (9.4,0.0);
+  \draw[rflow] (13.0,2.6) -- node[elbl]{beforeSwap}         (9.8,2.6);
+  \draw[flow]  (9.8,1.3)  -- node[elbl]{modifyLiquidity}    (13.0,1.3);
+  \draw[rflow] (13.0,0.0) -- node[elbl]{getFeeGrowthInside} (9.8,0.0);
 
   % ---------------- edges: traders and automation
   \draw[flow] (trd.east) -- node[elbl,pos=0.45]{swap} (15.3,-2.8) -- (15.3,-1.4);
