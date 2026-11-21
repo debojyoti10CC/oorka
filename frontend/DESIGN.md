@@ -1,88 +1,221 @@
 # Oorka design system
 
-Dark, cinematic and premium. Adapted from an extracted design system (source: stickitupx.com, extracted 2026-11-21) and applied to Oorka's landing page, arena and docs. Tokens live in `src/styles.css` under `:root`.
+Design intent, in one sentence: a clean, functional, dark interface that makes a live on-chain competition legible at a glance and lets developers and LPs act on it with keyboard, pointer or touch.
 
-## 1. Visual theme
+Foundations are adapted from the Stick It Up token set (stickitupx.com), applied to Oorka's three surfaces: the landing page (`#/`), the arena dashboard (`#/arena`) and the docs (`#/docs`). Every value below exists as a CSS custom property in `src/styles.css`. Components must reference tokens, never raw values.
 
-- Refined dark mode with muted tones.
-- Geist for headings and body, Geist Mono for code and numbers that need alignment.
-- Headings at weight 400 with tight negative letter-spacing.
-- `#0a0a0a` is the primary canvas.
-- One dominant accent, `#ffbe25`, for CTAs, the live price, the seat holder and brand highlights.
-- Rounded corners everywhere (9px+ on interactive elements, 16–24px on cards).
-- Subtle inset and drop shadows for elevation.
+---
 
-## 2. Color palette and roles
+## 1. Context and goals
 
-| Token | Hex | Role |
+- **Audience:** hookathon judges, developers and LPs. They are technical, they skim, and they verify claims.
+- **Surfaces:** a marketing-style landing page, a dense real-time dashboard, and a long-form docs page.
+- **Goals:**
+  1. Every number on screen must be readable and traceable to the chain.
+  2. Every action must be reachable and operable by keyboard.
+  3. The system must stay consistent: no one-off spacing, type or colour.
+- **Accessibility target:** WCAG 2.2 AA.
+
+## 2. Design tokens and foundations
+
+### 2.1 Color (semantic)
+
+| Token | Value | Use |
 |---|---|---|
-| `--color-bg` | `#0a0a0a` | Page background |
-| `--color-surface` | `#121212` | Cards and panels |
-| `--color-surface-2` | `#18181b` | Raised surfaces, inputs |
-| `--color-text` | `#ededed` | Headings and body text (never pure black or white text) |
-| `--color-text-secondary` | `#999999` | Muted text, captions |
-| `--color-border` | `rgba(243, 234, 255, 0.10)` | Dividers and outlines (`#f3eaff` at low alpha, so dark stays dark) |
-| `--color-primary` | `#ffbe25` | Accent: CTAs, live price, seat holder |
-| `--color-on-primary` | `#12110f` | Text on the accent |
-| Pastel set | `#f3eaff` `#fff1e4` `#eaf2ff` `#e3d3ff` `#ffe0c2` `#cfe2ff` `#fff1c2` | Tints for step numbers and illustrations, used sparingly |
+| `--color-surface-base` | `#000000` | Page canvas |
+| `--color-surface-muted` | `#0a0a0a` | Cards, panels, nav |
+| `--color-surface-subtle` | `#141416` | Inputs, hovered rows, code |
+| `--color-surface-raised` | `#ffffff` | Inverse elements only (the vault bar); never large areas |
+| `--color-text-primary` | `#ededed` | Headings, body, values |
+| `--color-text-secondary` | `#a1a1aa` | Labels, captions, muted copy (contrast 8.2:1 on base) |
+| `--color-text-tertiary` | `#71717a` | Decorative or non-essential text only, never body copy |
+| `--color-text-inverse` | `#0a0a0a` | Text on raised and accent surfaces |
+| `--color-border-default` | `rgba(255,255,255,0.10)` | Dividers, card outlines |
+| `--color-border-strong` | `rgba(255,255,255,0.22)` | Inputs, outline buttons, table headers |
+| `--color-accent` | `#ffbe25` | Primary action, live price, seat holder (contrast 12.6:1 on base) |
+| `--color-accent-hover` | `#ffcb52` | Primary hover |
+| `--color-focus` | `#ffbe25` | Focus ring |
+| `--color-success` | `#4ade80` | Wins, positive edge, live pulse |
+| `--color-danger` | `#f87171` | Errors, negative edge |
 
-Do not introduce bright white surfaces. They break the dark palette.
+**Deviation from the source:** the source's secondary text (`lab(47.9…)`, about `#727179`) only reaches about 4.3:1 on black. That fails AA for body-size text. Oorka uses `#a1a1aa` for secondary text and limits the source value to `--color-text-tertiary`, which carries no essential information.
 
-## 3. Typography
+### 2.2 Typography
 
-| Role | Font | Size | Weight | Line height | Letter spacing |
-|---|---|---|---|---|---|
-| Display | Geist | 60px | 400 | 66px | -1.5px |
-| H2 | Geist | 48px | 400 | 52.8px | -1.2px |
-| H3 | Geist | 30px | 600 | 36px | -0.75px |
-| Body | Geist | 16px | 400 | 24px | normal |
-| Small | Geist | 14px | 500 | 20px | normal |
-| Code | Geist Mono | 12px | 600 | 16px | normal |
+- `--font-family-primary`: `Geist, "Geist Fallback", ui-sans-serif, system-ui, sans-serif`
+- `--font-family-mono`: `"Geist Mono", ui-monospace, monospace`. Used for numbers, addresses and code.
+- Base: `--font-size-base` 16px, weight 400, `--line-height-base` 24px.
 
-Mobile (under 640px): scale display and H2 to about 80%.
-
-## 4. Components
-
-- **Primary button:** accent fill `#ffbe25`, text `#12110f`, 12px radius, 12px × 16px padding, 14px text.
-- **Outline button:** transparent, 0.8px border in `--color-border`, 12px radius.
-- **Pill:** fully rounded, 6px × 16px padding, 12px weight 500. Used for the announcement link and status tags.
-- **Card:** `--color-surface`, 24px radius, 32–40px padding, low shadow.
-
-## 5. Layout
-
-- Base spacing unit is 4px. Every gap is a multiple (8, 12, 16, 24, 32, 40).
-- Max content width 1180px, centered. 16px side gutter on mobile.
-- Radius scale: 2px subtle, 8–9px buttons, 16px small cards, 24px cards, 32px hero blocks.
-
-## 6. Elevation
-
-- Low: `inset 0 1px 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.4)` on cards.
-- Raised: `0 8px 32px rgba(0,0,0,0.45)` on the hero stats strip and focused panels.
-
-## 7. Do and don't
-
-Do:
-
-- keep everything dark;
-- use `#ffbe25` as the single dominant accent;
-- use Geist and Geist Mono;
-- stay on the 4px grid;
-- round every interactive element.
-
-Don't:
-
-- use sharp corners;
-- use pure black text;
-- add decorative badges or ribbons that carry no information;
-- invent UI patterns the product doesn't need.
-
-## 8. Responsive
-
-| Breakpoint | Width | Behaviour |
+| Token | Size | Use |
 |---|---|---|
-| Mobile | < 640px | Single column, sections stack, display type at about 80% |
-| Tablet | 640–1024px | Two columns where it helps |
-| Desktop | 1024–1440px | Full layout |
-| Wide | > 1440px | Max-width container, centered |
+| `--font-size-xs` | 11px | Axis labels, block numbers |
+| `--font-size-sm` | 12px | Pills, badges, code |
+| `--font-size-md` | 13.5px | Table cells, captions |
+| `--font-size-lg` | 14px | Buttons, labels |
+| `--font-size-xl` | 15px | Secondary body |
+| `--font-size-base` | 16px | Body |
+| `--font-size-h3` | 22px | Card titles |
+| `--font-size-h2` | 48px (36px under 640px) | Section titles |
+| `--font-size-display` | 60px (44px under 640px) | Hero |
 
-Touch targets are at least 44×44px on mobile.
+Headings use weight 400 with negative tracking (-1.5px on the display size). The only display-size exceptions are the token values above.
+
+### 2.3 Spacing
+
+The scale is 4px-based, with the source's fine steps kept for dense UI:
+
+`--space-1` 2px · `--space-2` 4px · `--space-3` 6px · `--space-4` 8px · `--space-5` 10px · `--space-6` 12px · `--space-7` 14px · `--space-8` 16px · `--space-10` 24px · `--space-12` 32px · `--space-16` 48px · `--space-20` 88px
+
+Every gap, padding and margin must use one of these.
+
+### 2.4 Radius, shadow, motion
+
+- **Radius:**
+  - `--radius-xs` 12px: buttons, inputs
+  - `--radius-sm` 16px: inner cards, code blocks
+  - `--radius-md` 22px: cards, panels
+  - `--radius-lg` 40px: hero blocks
+  - `--radius-pill` 9999px: pills, badges
+- **Shadow:**
+  - `--shadow-1`: hairline inset highlight plus 1px drop. Cards.
+  - `--shadow-4`: `inset 0 1px 0 rgba(255,255,255,.2), 0 2px 4px rgba(0,0,0,.2)`. Primary buttons.
+  - `--shadow-raised`: the live strip.
+- **Motion:**
+  - `--motion-instant` 150ms: hover and color
+  - `--motion-fast` 160ms: press
+  - `--motion-normal` 200ms: card lift
+  - `--motion-slow` 260ms
+  - `--motion-slower` 300ms
+  - `--motion-lane` 600ms: lane bars sliding on takeover
+
+  Everything must respect `prefers-reduced-motion: reduce`, which drops animation and transitions to none.
+
+## 3. Component rules
+
+Page density: about 38 links, about 14 buttons, 7 lists and 2 navigation landmarks (top nav, docs table of contents).
+
+### 3.1 Button (`button`, `.btn`)
+
+- **Anatomy:** optional leading icon, then the label, then an optional trailing arrow. Label in `--font-size-lg`, weight 500.
+- **Variants:**
+  - `primary`: accent fill, inverse text, `--shadow-4`
+  - `default`: outline in `--color-border-strong`
+  - `ghost`: outline in `--color-border-default`
+  - `lg`: larger padding for hero CTAs
+- **Spacing:** `--space-4` × `--space-8` padding (`lg`: `--space-6` × `--space-10`). Minimum height 36px, and 44px under 640px.
+- **States:**
+
+| State | Rule |
+|---|---|
+| default | Tokens as above |
+| hover | Background `--color-surface-subtle`, or `--color-accent-hover` for primary, over `--motion-instant` |
+| focus-visible | 2px `--color-focus` outline with a 2px offset. Must never be removed |
+| active | `translateY(1px)` over `--motion-fast` |
+| disabled | `disabled` attribute, opacity 0.4, `cursor: not-allowed`, not focusable |
+| loading | `aria-busy="true"`: label stays, a 12px spinner is prepended, pointer events off |
+| error | The surrounding `.status.err` region announces the message. The button itself is not recoloured |
+
+- **Keyboard:** Tab or Shift+Tab to reach. Enter or Space to activate.
+- **Pointer and touch:** the whole box is the target, at least 44×44 on touch.
+- **Edge cases:**
+  - Long labels must not wrap mid-word; groups wrap as a whole (`flex-wrap`).
+  - Actions must be named for the outcome: "Settle epoch 3", not "Submit".
+
+### 3.2 Input and select
+
+- **Anatomy:** a visible `<label>` above the field. Placeholder text never replaces the label.
+- **States:**
+  - focus-visible: accent ring
+  - error: `aria-invalid="true"` sets `--color-danger` on the border, with the message in the status region
+  - disabled: opacity 0.4
+- **Edge cases:** numeric fields use `inputMode="decimal"`. Invalid amounts surface a readable error, never a raw revert.
+
+### 3.3 Card, panel, step, feature
+
+- **Look:** `--color-surface-muted` surface, a `--color-border-default` border, `--radius-md`, `--shadow-1`. Padding `--space-10` (arena) or `--space-12` (landing).
+- **Interactive cards** (`.explore a`):
+  - hover: border becomes `--color-accent` and the card lifts 2px over `--motion-normal`
+  - focus-visible: the accent ring
+- **Overflow:** wide content (tables) must scroll inside the card (`overflow-x: auto`), never the page.
+
+### 3.4 Live strip (landing)
+
+- **Content:** five label and value cells. Values in mono, and the live price in accent.
+- **Accessibility:** `aria-live="polite"`.
+- **Loading:** an ellipsis placeholder.
+- **Error:** the caption reads "Live data unavailable right now."
+- **Responsive:** 5 columns, then 3 at 1024px or less, then 2 at 640px or less. Long values truncate with an ellipsis.
+
+### 3.5 Tables (standings, vault vs benchmark, comparison, docs)
+
+- Header: `--font-size-sm`, secondary text, with a strong bottom border.
+- Numeric columns: right-aligned mono with tabular numerals.
+- Empty state: an explicit sentence ("Nothing yet.").
+- Overflow: horizontal scroll inside the container.
+
+### 3.6 Navigation
+
+- Top nav: brand link plus Arena, Docs and GitHub. The current route gets `aria-current="page"`.
+- Docs table of contents: sticky on desktop, and a horizontally scrolling row under 640px.
+- A "Skip to content" link must be the first focusable element.
+
+### 3.7 Status and toasts
+
+- The `.status` region uses `role="status"`.
+- Busy messages use secondary text, success uses `--color-success`, and error uses `--color-danger`.
+- Messages are full sentences that say what happened and what to do next.
+
+### 3.8 Lanes chart (SVG)
+
+- `role="img"` with a descriptive `aria-label`.
+- Out-of-range ranges are hatched, so they're distinguishable without color.
+- The seat holder is marked by an accent ring, not by color alone.
+
+## 4. Accessibility requirements (testable)
+
+| # | Criterion | Pass / fail check |
+|---|---|---|
+| A1 | Text contrast | Body and labels must be at least 4.5:1, and large text at least 3:1. Check `--color-text-secondary` on `--color-surface-base` and on `--color-surface-muted` with a contrast checker; both must pass |
+| A2 | Focus visible | Tab through every page. Every interactive element must show the 2px accent outline. Fails if any element shows none |
+| A3 | Focus not obscured (2.4.11) | The sticky nav must never cover the focused element. `scroll-margin-top` must be at least 80px on targets |
+| A4 | Keyboard operable | Every action must be completable with Tab, Enter and Space only, with no traps |
+| A5 | Target size (2.5.8) | Interactive targets must be at least 24×24 CSS px everywhere, and at least 44×44 under 640px |
+| A6 | Reflow | At 320px wide, no horizontal page scroll. Fails if `document.documentElement.scrollWidth > innerWidth` |
+| A7 | Motion | With `prefers-reduced-motion: reduce`, the marquee, pulse and transitions must stop |
+| A8 | Names | Every button and link must have an accessible name that states its outcome |
+| A9 | Status | Async results must be announced through `role="status"` |
+| A10 | Non-color cues | In-range vs out-of-range, and seat vs challenger, must be distinguishable in grayscale |
+
+## 5. Content and tone
+
+Be concise, confident and implementation-focused.
+
+- **Do:** "Settle epoch 3." / "Takeover. Tight Tony won the seat and the vault moved to their range."
+- **Don't:** "Submit" / "Something went wrong" / "Click here".
+- Numbers carry units: tUSD, tETH, %, blocks.
+- Errors say what happened and the fix: "The epoch isn't over yet."
+
+## 6. Anti-patterns (prohibited)
+
+You must not:
+
+- use raw hex values in component CSS (tokens only);
+- remove or restyle away the focus outline;
+- use text below 4.5:1 for anything a user needs to read;
+- use spacing outside the scale, or font sizes outside the type tokens;
+- use large white surfaces;
+- signal state with color alone;
+- use buttons labelled "OK", "Submit" or "Click here";
+- let horizontal scroll reach the page body.
+
+## 7. QA checklist
+
+- [ ] All component CSS reads semantic tokens.
+- [ ] Every button shows hover, focus-visible, active, disabled and loading correctly.
+- [ ] A keyboard-only pass completes connect, deposit, register and settle in the arena.
+- [ ] Skip link appears on first Tab and jumps to main content.
+- [ ] Contrast checks A1 pass.
+- [ ] 320px, 375px, 768px and 1280px widths: no page-level horizontal scroll.
+- [ ] Reduced motion stops the marquee, pulse and transitions.
+- [ ] Empty states show sentences, and loading shows placeholders.
+- [ ] Copy matches section 5.

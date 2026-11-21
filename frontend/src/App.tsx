@@ -453,16 +453,16 @@ export default function App() {
         <div className="controls">
           <div className="control-group">
             <span className="group-label">1. Move the market</span>
-            <button disabled={!!busy || noSigner} onClick={() => simulateMarket("range")}>Trade in a range</button>
-            <button disabled={!!busy || noSigner} onClick={() => simulateMarket("up")}>Pump tETH</button>
-            <button disabled={!!busy || noSigner} onClick={() => simulateMarket("down")}>Dump tETH</button>
+            <button aria-busy={busy === "Trading in a range"} disabled={!!busy || noSigner} onClick={() => simulateMarket("range")}>Trade in a range</button>
+            <button aria-busy={busy === "Pumping"} disabled={!!busy || noSigner} onClick={() => simulateMarket("up")}>Pump tETH</button>
+            <button aria-busy={busy === "Dumping"} disabled={!!busy || noSigner} onClick={() => simulateMarket("down")}>Dump tETH</button>
           </div>
           <div className="control-group">
             <span className="group-label">2. Close the epoch</span>
             {!IS_WALLET && (
-              <button disabled={!!busy} onClick={skipToEpochEnd}>Skip to epoch end</button>
+              <button aria-busy={busy === "Skipping time"} disabled={!!busy} onClick={skipToEpochEnd}>Skip to epoch end</button>
             )}
-            <button className="primary" disabled={!!busy || remaining > 0 || noSigner} onClick={settle}>
+            <button className="primary" aria-busy={busy === "Settling epoch"} disabled={!!busy || remaining > 0 || noSigner} onClick={settle}>
               Settle epoch {snap.epoch.current}
             </button>
           </div>

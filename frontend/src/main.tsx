@@ -29,6 +29,9 @@ function Shell() {
 
   return (
     <>
+      <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>
+        Skip to content
+      </a>
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
           <a className="brand-link" href="#/">
@@ -36,10 +39,10 @@ function Shell() {
             Oorka
           </a>
           <div className="nav-links">
-            <a href="#/arena" className={route === "arena" ? "active" : ""}>
+            <a href="#/arena" aria-current={route === "arena" ? "page" : undefined}>
               Arena
             </a>
-            <a href="#/docs" className={route === "docs" ? "active" : ""}>
+            <a href="#/docs" aria-current={route === "docs" ? "page" : undefined}>
               Docs
             </a>
             <a href={REPO_URL} target="_blank" rel="noreferrer">
@@ -48,7 +51,9 @@ function Shell() {
           </div>
         </div>
       </nav>
-      {route === "arena" ? <App /> : route === "docs" ? <Docs /> : <Landing />}
+      <div id="main" tabIndex={-1} style={{ outline: "none" }}>
+        {route === "arena" ? <App /> : route === "docs" ? <Docs /> : <Landing />}
+      </div>
       <footer className="site-foot">
         <div className="site-foot-inner">
           <span>Oorka · UHI11 Hookathon · Active Management &amp; Curated Liquidity</span>
