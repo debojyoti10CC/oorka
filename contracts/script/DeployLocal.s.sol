@@ -13,9 +13,9 @@ import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
 import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
 import {PoolModifyLiquidityTest} from "v4-core/test/PoolModifyLiquidityTest.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-import {GauntletHook} from "../src/GauntletHook.sol";
+import {OorkaHook} from "../src/OorkaHook.sol";
 
-/// @notice Deploys a complete local Gauntlet world on anvil:
+/// @notice Deploys a complete local Oorka world on anvil:
 /// PoolManager, tETH/tUSD, routers, the hook at a flag-mined address, a tETH/tUSD pool at ~3000,
 /// deep background liquidity, three seeded curators and a seeded vault deposit.
 contract DeployLocal is Script {
@@ -54,7 +54,7 @@ contract DeployLocal is Script {
         require(address(teth) < address(tusd), "token order");
 
         // mine a hook address with the right permission bits
-        GauntletHook.Config memory cfg = GauntletHook.Config({
+        OorkaHook.Config memory cfg = OorkaHook.Config({
             epochLength: 10 minutes,
             winStreak: 2,
             marginBps: 10,
@@ -64,7 +64,7 @@ contract DeployLocal is Script {
             minBond: 100e18
         });
         uint160 flags = uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG);
-        bytes memory hookInit = abi.encodePacked(type(GauntletHook).creationCode, abi.encode(manager, cfg));
+        bytes memory hookInit = abi.encodePacked(type(OorkaHook).creationCode, abi.encode(manager, cfg));
         bytes32 hookSalt;
         for (uint256 s;; ++s) {
             address predicted = vm.computeCreate2Address(bytes32(s), keccak256(hookInit), CREATE2_DEPLOYER);
@@ -73,7 +73,7 @@ contract DeployLocal is Script {
                 break;
             }
         }
-        GauntletHook hook = new GauntletHook{salt: hookSalt}(manager, cfg);
+        OorkaHook hook = new OorkaHook{salt: hookSalt}(manager, cfg);
         require(uint160(address(hook)) & Hooks.ALL_HOOK_MASK == flags, "hook flags");
 
         // pool at ~3000 tUSD per tETH

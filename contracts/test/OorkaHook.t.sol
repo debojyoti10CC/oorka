@@ -12,11 +12,11 @@ import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-import {GauntletHook} from "../src/GauntletHook.sol";
+import {OorkaHook} from "../src/OorkaHook.sol";
 
-contract GauntletHookTest is Test, Deployers {
+contract OorkaHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
-    GauntletHook hook;
+    OorkaHook hook;
     address alice = makeAddr("alice"); // incumbent: wide range
     address bob = makeAddr("bob"); // challenger: tight range
     address carol = makeAddr("carol"); // challenger: range far from price
@@ -34,7 +34,7 @@ contract GauntletHookTest is Test, Deployers {
         address flags = address(
             uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG) ^ (0x4444 << 144)
         );
-        GauntletHook.Config memory cfg = GauntletHook.Config({
+        OorkaHook.Config memory cfg = OorkaHook.Config({
             epochLength: 1 hours,
             winStreak: 2,
             marginBps: 10,
@@ -43,8 +43,8 @@ contract GauntletHookTest is Test, Deployers {
             maxTickDeviation: 200,
             minBond: 100e18
         });
-        deployCodeTo("GauntletHook.sol:GauntletHook", abi.encode(manager, cfg), flags);
-        hook = GauntletHook(flags);
+        deployCodeTo("OorkaHook.sol:OorkaHook", abi.encode(manager, cfg), flags);
+        hook = OorkaHook(flags);
 
         (key,) = initPool(currency0, currency1, IHooks(address(hook)), 3000, 60, SQRT_PRICE_1_1);
 
@@ -164,7 +164,7 @@ contract GauntletHookTest is Test, Deployers {
             _trade(20, 50e18);
             _nextEpoch();
         }
-        GauntletHook.CuratorView[] memory cs = hook.getCurators();
+        OorkaHook.CuratorView[] memory cs = hook.getCurators();
         for (uint256 i; i < cs.length; ++i) {
             assertEq(cs[i].streak, 0, "streaks earned against the old seat holder are wiped");
         }
@@ -178,7 +178,7 @@ contract GauntletHookTest is Test, Deployers {
             _trade(20, 50e18);
             _nextEpoch();
         }
-        GauntletHook.CuratorView[] memory cs = hook.getCurators();
+        OorkaHook.CuratorView[] memory cs = hook.getCurators();
         assertEq(cs[inc].bond, 80e18, "20% of alice's bond slashed");
         assertFalse(cs[inc].incumbent);
     }
@@ -207,7 +207,7 @@ contract GauntletHookTest is Test, Deployers {
             _trade(20, 50e18);
             _nextEpoch();
         }
-        GauntletHook.CuratorView[] memory cs = hook.getCurators();
+        OorkaHook.CuratorView[] memory cs = hook.getCurators();
         assertEq(cs[far].streak, 0);
         assertFalse(cs[far].incumbent);
     }
@@ -227,7 +227,7 @@ contract GauntletHookTest is Test, Deployers {
         assertApproxEqRel(hook.vaultNav(), vaultBefore, 0.01e18);
         // and vault-moving actions are blocked while spot is far from the reference
         vm.prank(dave);
-        vm.expectRevert(GauntletHook.PriceDeviation.selector);
+        vm.expectRevert(OorkaHook.PriceDeviation.selector);
         hook.deposit(1e18, 1e18, 0);
     }
 
@@ -262,26 +262,26 @@ contract GauntletHookTest is Test, Deployers {
     function test_incumbentCannotExit() public {
         (uint256 inc,) = _registerBase();
         vm.prank(alice);
-        vm.expectRevert(GauntletHook.IsIncumbent.selector);
+        vm.expectRevert(OorkaHook.IsIncumbent.selector);
         hook.exit(inc);
     }
 
     function test_cannotSettleEarly() public {
         _registerBase();
-        vm.expectRevert(GauntletHook.EpochNotOver.selector);
+        vm.expectRevert(OorkaHook.EpochNotOver.selector);
         hook.settleEpoch();
     }
 
     function test_onlyOwnerDeclares() public {
         (, uint256 chal) = _registerBase();
         vm.prank(carol);
-        vm.expectRevert(GauntletHook.NotCuratorOwner.selector);
+        vm.expectRevert(OorkaHook.NotCuratorOwner.selector);
         hook.declareRange(chal, -600, 600);
     }
 
     function test_bondTooSmall() public {
         vm.prank(alice);
-        vm.expectRevert(GauntletHook.BondTooSmall.selector);
+        vm.expectRevert(OorkaHook.BondTooSmall.selector);
         hook.register("x", WIDE_L, WIDE_U, 1e18);
     }
 
@@ -294,7 +294,7 @@ contract GauntletHookTest is Test, Deployers {
                 CustomRevert.WrappedError.selector,
                 address(hook),
                 IHooks.beforeDonate.selector,
-                abi.encodeWithSelector(GauntletHook.DonationsDisabled.selector),
+                abi.encodeWithSelector(OorkaHook.DonationsDisabled.selector),
                 abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
@@ -316,10 +316,10 @@ contract GauntletHookTest is Test, Deployers {
 
         // nobody owns it: it can't be moved or exited
         vm.prank(dave);
-        vm.expectRevert(GauntletHook.NotCuratorOwner.selector);
+        vm.expectRevert(OorkaHook.NotCuratorOwner.selector);
         hook.declareRange(b, -600, 600);
         vm.prank(dave);
-        vm.expectRevert(GauntletHook.NotCuratorOwner.selector);
+        vm.expectRevert(OorkaHook.NotCuratorOwner.selector);
         hook.exit(b);
     }
 
@@ -327,7 +327,7 @@ contract GauntletHookTest is Test, Deployers {
         _registerBase();
         _registerBenchmark();
         vm.prank(carol);
-        vm.expectRevert(GauntletHook.BenchmarkExists.selector);
+        vm.expectRevert(OorkaHook.BenchmarkExists.selector);
         hook.registerBenchmark("Another", -1200, 1200);
     }
 
@@ -342,7 +342,7 @@ contract GauntletHookTest is Test, Deployers {
             _nextEpoch();
         }
         assertEq(hook.incumbentId(), inc, "benchmark is not a challenger");
-        GauntletHook.CuratorView[] memory cs = hook.getCurators();
+        OorkaHook.CuratorView[] memory cs = hook.getCurators();
         assertTrue(cs[b].benchmark);
         assertEq(cs[b].streak, 0);
         assertGt(cs[b].nav, cs[inc].nav, "it did earn more, it just can't win");
@@ -392,7 +392,7 @@ contract GauntletHookTest is Test, Deployers {
 
     function test_badRangeReverts() public {
         vm.prank(alice);
-        vm.expectRevert(GauntletHook.BadRange.selector);
+        vm.expectRevert(OorkaHook.BadRange.selector);
         hook.register("x", 10, 600, 100e18); // not a multiple of tickSpacing
     }
 }

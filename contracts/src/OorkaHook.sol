@@ -20,7 +20,7 @@ import {IERC20Minimal} from "v4-core/interfaces/external/IERC20Minimal.sol";
 import {LiquidityAmounts} from "v4-periphery/src/libraries/LiquidityAmounts.sol";
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 
-/// @title GauntletHook
+/// @title OorkaHook
 /// @notice A curated LP vault for one Uniswap v4 pool where the curator seat is contested on-chain.
 ///
 /// Anyone can challenge the current curator by posting a bond and declaring the range they would run.
@@ -29,7 +29,7 @@ import {ERC20} from "solmate/src/tokens/ERC20.sol";
 /// of liquidity using real swap data, with no capital at risk. Each curator gets a virtual portfolio
 /// (paper NAV) marked to a manipulation-resistant reference price. A challenger that beats the incumbent by a
 /// margin for `winStreak` consecutive epochs takes over, and the vault's real liquidity migrates to their range.
-contract GauntletHook is IHooks, IUnlockCallback, ERC20 {
+contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
 
@@ -148,7 +148,7 @@ contract GauntletHook is IHooks, IUnlockCallback, ERC20 {
         WITHDRAW
     }
 
-    constructor(IPoolManager _poolManager, Config memory _config) ERC20("Gauntlet Vault Share", "gLP", 18) {
+    constructor(IPoolManager _poolManager, Config memory _config) ERC20("Oorka Vault Share", "oLP", 18) {
         poolManager = _poolManager;
         config = _config;
         Hooks.validateHookPermissions(IHooks(address(this)), getHookPermissions());
@@ -220,7 +220,7 @@ contract GauntletHook is IHooks, IUnlockCallback, ERC20 {
     // Curator actions
     // ------------------------------------------------------------------
 
-    /// @notice Enter the gauntlet. The first curator ever registered becomes the incumbent.
+    /// @notice Enter the arena. The first curator ever registered becomes the incumbent.
     /// @dev Caller must approve this contract for `bond` token1 plus dust amounts of both tokens for the probe.
     function register(string calldata name, int24 lower, int24 upper, uint256 bond)
         external
@@ -287,7 +287,7 @@ contract GauntletHook is IHooks, IUnlockCallback, ERC20 {
         if (isInc) _moveVault(lower, upper);
     }
 
-    /// @notice Leave the gauntlet and reclaim your bond. The incumbent cannot exit.
+    /// @notice Leave the arena and reclaim your bond. The incumbent cannot exit.
     function exit(uint256 id) external poolReady {
         Curator storage c = curators[id];
         if (!c.active) revert Inactive();

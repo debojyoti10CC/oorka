@@ -1,4 +1,4 @@
-# Gauntlet
+# Oorka
 
 **A Uniswap v4 hook where the right to manage a vault's liquidity is contested on-chain.**
 
@@ -56,8 +56,8 @@ The grey lane is the **benchmark**: the same 1,000 tUSD paper portfolio, parked 
 
 `settleEpoch()` is permissionless, but someone still has to call it. `src/reactive/` removes that someone:
 
-- **`GauntletReactive`** runs on Reactive Network. It subscribes to one of Reactive's built-in CRON events and, every `ticksPerPoke` ticks, emits a callback to the hook's chain.
-- **`GauntletKeeper`** runs on the hook's chain. It only accepts callbacks from the Reactive callback proxy *and* from our own reactive contract's RVM id. If the epoch is over it settles it, otherwise it emits `Idle`. A failed settle is reported (`SettleFailed`) and retried on the next tick, so it can't block the schedule.
+- **`OorkaReactive`** runs on Reactive Network. It subscribes to one of Reactive's built-in CRON events and, every `ticksPerPoke` ticks, emits a callback to the hook's chain.
+- **`OorkaKeeper`** runs on the hook's chain. It only accepts callbacks from the Reactive callback proxy *and* from our own reactive contract's RVM id. If the epoch is over it settles it, otherwise it emits `Idle`. A failed settle is reported (`SettleFailed`) and retried on the next tick, so it can't block the schedule.
 
 The keeper has no special rights on the hook. All it adds is liveness: the seat changes hands on time even when nobody is watching. A takeover settle uses under 1.5M gas, half the 3M callback budget (checked in the tests).
 
@@ -66,12 +66,12 @@ Deploy (Unichain Sepolia + Reactive Lasna), from the **same** EOA so the RVM id 
 ```bash
 cd contracts
 # 1. keeper on the hook's chain, with Unichain Sepolia's Reactive callback proxy, funded for callback fees
-forge create src/reactive/GauntletKeeper.sol:GauntletKeeper --broadcast \
+forge create src/reactive/OorkaKeeper.sol:OorkaKeeper --broadcast \
   --rpc-url https://sepolia.unichain.org --private-key $PRIVATE_KEY --value 0.01ether \
   --constructor-args 0x775c9B990ADe401060B78D0e98684eEf8d2466C1 $HOOK false
 
 # 2. reactive contract on Lasna: Cron100 (~12 min), poke every tick, destination chain 1301
-forge create src/reactive/GauntletReactive.sol:GauntletReactive --broadcast \
+forge create src/reactive/OorkaReactive.sol:OorkaReactive --broadcast \
   --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY --value 0.1ether \
   --constructor-args 0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70 1301 $KEEPER 1
 ```
@@ -136,8 +136,8 @@ That's the Unichain Sepolia PoolManager. Sepolia, Base Sepolia and Arbitrum Sepo
 
 ```
 contracts/
-  src/GauntletHook.sol     the hook, the vault (ERC20 shares) and the curator registry, in one contract
-  src/reactive/            GauntletReactive (Reactive Network CRON) + GauntletKeeper (callback, settles epochs)
+  src/OorkaHook.sol     the hook, the vault (ERC20 shares) and the curator registry, in one contract
+  src/reactive/            OorkaReactive (Reactive Network CRON) + OorkaKeeper (callback, settles epochs)
   test/                    31 Foundry tests (hook + reactive keeper)
   script/DeployLocal.s.sol local world with seeded curators
   script/DeployTestnet.s.sol deploy against a real v4 PoolManager
@@ -180,9 +180,9 @@ NAV      = value(position + fees + cash, blockOpenPrice)    // in tUSD
 
 ## Mapped to the judging criteria
 
-| Criterion | Weight | Where Gauntlet scores |
+| Criterion | Weight | Where Oorka scores |
 |---|---|---|
-| Original idea | 30% | Auction-managed AMM hooks (Chronus, Maestro, Turnstile in the UHI directory) *sell* the manager seat to the highest bidder. Gauntlet makes curators *earn* it with measured LP performance. Using dust probe positions to make v4 track fees at hypothetical ranges is, as far as we found, new. |
+| Original idea | 30% | Auction-managed AMM hooks (Chronus, Maestro, Turnstile in the UHI directory) *sell* the manager seat to the highest bidder. Oorka makes curators *earn* it with measured LP performance. Using dust probe positions to make v4 track fees at hypothetical ranges is, as far as we found, new. |
 | Unique execution | 25% | Pure v4 primitives (`getFeeGrowthInside`, salted positions, the unlock callback). No oracle, no off-chain service. Manipulation-resistant block-open pricing, donations blocked at the hook. Keeper-free settlement via Reactive Network. |
 | Impact | 20% | Turns "trust the manager" into "the manager is whoever is actually winning", and shows on-chain whether that beats a passive benchmark. Depositors get automatic manager replacement plus slashed bonds. Strategists get a permissionless way to prove skill without capital. |
 | Functionality | 15% | 31 passing tests, one-command demo, a full lifecycle with real swaps on a real PoolManager. |
@@ -197,7 +197,7 @@ NAV      = value(position + fees + cash, blockOpenPrice)    // in tUSD
 5. **(2:00) Regime change.** Click *Pump tETH*. Tony's bar goes hatched and Pam leads. "The hook will hand the seat back if this keeps up. Nobody had to vote."
 6. **(2:20) Does it pay?** Point at the Vault panel: vault vs benchmark, since start and this epoch. "Every settlement reports whether the contested seat beat sitting still."
 7. **(2:35) Safety.** Flash the attack/defense table. Mention block-open pricing, blocked donations, the Reactive keeper and the 31 tests.
-8. **(2:50) Close.** "Gauntlet: curation as a competition that settles itself on-chain."
+8. **(2:50) Close.** "Oorka: curation as a competition that settles itself on-chain."
 
 ## Next steps
 

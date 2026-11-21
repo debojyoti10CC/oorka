@@ -12,9 +12,9 @@ import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
 import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
 import {PoolModifyLiquidityTest} from "v4-core/test/PoolModifyLiquidityTest.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-import {GauntletHook} from "../src/GauntletHook.sol";
+import {OorkaHook} from "../src/OorkaHook.sol";
 
-/// @notice Deploy Gauntlet against an existing Uniswap v4 PoolManager (e.g. Unichain Sepolia).
+/// @notice Deploy Oorka against an existing Uniswap v4 PoolManager (e.g. Unichain Sepolia).
 ///
 /// Testnet PoolManagers (from developers.uniswap.org/docs/protocols/v4/deployments):
 ///   Unichain Sepolia 1301      0x00b036b58a818b1bc34d502d3fe730db729e62ac
@@ -53,7 +53,7 @@ contract DeployTestnet is Script {
         }
         MockERC20 tusd = new MockERC20{salt: usdSalt}("Test USD", "tUSD", 18);
 
-        GauntletHook.Config memory cfg = GauntletHook.Config({
+        OorkaHook.Config memory cfg = OorkaHook.Config({
             epochLength: epochSeconds,
             winStreak: 2,
             marginBps: 10,
@@ -63,7 +63,7 @@ contract DeployTestnet is Script {
             minBond: 100e18
         });
         uint160 flags = uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG);
-        bytes memory hookInit = abi.encodePacked(type(GauntletHook).creationCode, abi.encode(manager, cfg));
+        bytes memory hookInit = abi.encodePacked(type(OorkaHook).creationCode, abi.encode(manager, cfg));
         bytes32 hookSalt;
         for (uint256 s;; ++s) {
             bytes32 cand = keccak256(abi.encode(runSalt, "hook", s));
@@ -73,7 +73,7 @@ contract DeployTestnet is Script {
                 break;
             }
         }
-        GauntletHook hook = new GauntletHook{salt: hookSalt}(manager, cfg);
+        OorkaHook hook = new OorkaHook{salt: hookSalt}(manager, cfg);
 
         PoolKey memory key = PoolKey({
             currency0: Currency.wrap(address(teth)),

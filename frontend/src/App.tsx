@@ -266,7 +266,7 @@ export default function App() {
   };
 
   const register = (name: string, lowP: number, highP: number, bond: string) =>
-    run("Entering the gauntlet", async () => {
+    run("Entering the arena", async () => {
       if (!dep) return;
       const lower = priceToTick(lowP, dep.tickSpacing, "floor");
       const upper = priceToTick(highP, dep.tickSpacing, "ceil");
@@ -290,7 +290,7 @@ export default function App() {
     run("Exiting", async () => {
       if (!dep) return;
       await send(actor, { address: dep.hook, abi: HOOK_ABI, functionName: "exit", args: [BigInt(id)] });
-      return "You left the gauntlet. Bond returned.";
+      return "You left the arena. Bond returned.";
     });
 
   const deposit = (eth: string, usd: string) =>
@@ -316,7 +316,7 @@ export default function App() {
   if (!dep || !snap) {
     return (
       <main className="boot">
-        <h1 className="wordmark">Gauntlet</h1>
+        <h1 className="wordmark">Oorka</h1>
         <p>{loadError ?? "Connecting to the local chain…"}</p>
         {loadError && <p className="muted">Start everything with <code>./demo.sh</code> from the repo root, then reload.</p>}
       </main>
@@ -337,7 +337,7 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="brand">
-          <h1 className="wordmark">Gauntlet</h1>
+          <h1 className="wordmark">Oorka</h1>
           <p className="tagline">The vault's curator seat, contested on-chain.</p>
         </div>
         <dl className="vitals">
@@ -489,7 +489,7 @@ export default function App() {
         </section>
 
         <section className="panel">
-          <h2>{mine.length ? "Your seat in the gauntlet" : "Enter the gauntlet"}</h2>
+          <h2>{mine.length ? "Your seat in the arena" : "Enter the arena"}</h2>
           {mine.length ? (
             mine.map((c) => (
               <RangeEditor key={c.id} c={c} price={snap.price} busy={!!busy} onDeclare={declare} onExit={exit} />
@@ -535,7 +535,7 @@ export default function App() {
         };
       }
       case "CuratorExited":
-        return { key, block, text: `${name(a.id)} left the gauntlet.` };
+        return { key, block, text: `${name(a.id)} left the arena.` };
       case "Deposited":
         return { key, block, text: `Deposit of ${fmt(fromWad(a.amount0), 2)} tETH and ${fmt(fromWad(a.amount1), 0)} tUSD.` };
       case "Withdrawn":
@@ -699,7 +699,7 @@ function RegisterForm({
         Bond (tUSD)
         <input inputMode="decimal" value={bond} onChange={(e) => setBond(e.target.value)} />
       </label>
-      <button className="primary" disabled={busy || !name.trim()}>Enter the gauntlet</button>
+      <button className="primary" disabled={busy || !name.trim()}>Enter the arena</button>
     </form>
   );
 }

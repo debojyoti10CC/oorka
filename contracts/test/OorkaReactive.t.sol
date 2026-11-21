@@ -9,19 +9,19 @@ import {Currency} from "v4-core/types/Currency.sol";
 import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 import {IReactive} from "reactive-lib/interfaces/IReactive.sol";
-import {GauntletHook} from "../src/GauntletHook.sol";
-import {GauntletKeeper, IGauntletHook} from "../src/reactive/GauntletKeeper.sol";
-import {GauntletReactive} from "../src/reactive/GauntletReactive.sol";
+import {OorkaHook} from "../src/OorkaHook.sol";
+import {OorkaKeeper, IOorkaHook} from "../src/reactive/OorkaKeeper.sol";
+import {OorkaReactive} from "../src/reactive/OorkaReactive.sol";
 
-/// @notice Keeper-free epoch settlement: Reactive CRON -> GauntletReactive -> callback -> GauntletKeeper -> hook.
+/// @notice Keeper-free epoch settlement: Reactive CRON -> OorkaReactive -> callback -> OorkaKeeper -> hook.
 /// Reactive Network itself isn't available in a unit test, so the callback proxy is played by `proxy`, and the
 /// RVM id is this test contract (the keeper's deployer), exactly as it would be on a real deployment.
-contract GauntletReactiveTest is Test, Deployers {
+contract OorkaReactiveTest is Test, Deployers {
     uint256 constant CRON100 = 0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70;
     uint256 constant UNICHAIN_SEPOLIA = 1301;
 
-    GauntletHook hook;
-    GauntletKeeper keeper;
+    OorkaHook hook;
+    OorkaKeeper keeper;
     address proxy = makeAddr("callbackProxy");
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
@@ -34,7 +34,7 @@ contract GauntletReactiveTest is Test, Deployers {
         address flags = address(
             uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_DONATE_FLAG) ^ (0x4444 << 144)
         );
-        GauntletHook.Config memory cfg = GauntletHook.Config({
+        OorkaHook.Config memory cfg = OorkaHook.Config({
             epochLength: 1 hours,
             winStreak: 2,
             marginBps: 10,
@@ -43,8 +43,8 @@ contract GauntletReactiveTest is Test, Deployers {
             maxTickDeviation: 200,
             minBond: 100e18
         });
-        deployCodeTo("GauntletHook.sol:GauntletHook", abi.encode(manager, cfg), flags);
-        hook = GauntletHook(flags);
+        deployCodeTo("OorkaHook.sol:OorkaHook", abi.encode(manager, cfg), flags);
+        hook = OorkaHook(flags);
         (key,) = initPool(currency0, currency1, IHooks(address(hook)), 3000, 60, SQRT_PRICE_1_1);
         modifyLiquidityRouter.modifyLiquidity(
             key, ModifyLiquidityParams({tickLower: -60000, tickUpper: 60000, liquidityDelta: 1e22, salt: 0}), ""
@@ -63,7 +63,7 @@ contract GauntletReactiveTest is Test, Deployers {
         vm.prank(bob);
         chal = hook.register("Tight Bob", -240, 240, 100e18);
 
-        keeper = new GauntletKeeper(proxy, IGauntletHook(address(hook)), false);
+        keeper = new OorkaKeeper(proxy, IOorkaHook(address(hook)), false);
     }
 
     function _trade() internal {
@@ -88,7 +88,7 @@ contract GauntletReactiveTest is Test, Deployers {
     // ---------------- keeper ----------------
     function test_pokeIsANoOpMidEpoch() public {
         vm.expectEmit(true, false, false, false, address(keeper));
-        emit GauntletKeeper.Idle(0, 0);
+        emit OorkaKeeper.Idle(0, 0);
         _poke();
         assertEq(hook.epoch(), 0);
     }
@@ -96,7 +96,7 @@ contract GauntletReactiveTest is Test, Deployers {
     function test_pokeSettlesAnEndedEpoch() public {
         _toEpochEnd();
         vm.expectEmit(true, false, false, true, address(keeper));
-        emit GauntletKeeper.Settled(0);
+        emit OorkaKeeper.Settled(0);
         _poke();
         assertEq(hook.epoch(), 1);
     }
@@ -137,7 +137,7 @@ contract GauntletReactiveTest is Test, Deployers {
 
     function test_reactiveEmitsCallbackEveryNTicks() public {
         // no system contract at 0xfffFfF here, so this instance behaves like the ReactVM copy
-        GauntletReactive rc = new GauntletReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 2);
+        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 2);
 
         vm.recordLogs();
         rc.react(_cronLog(CRON100));
@@ -152,7 +152,7 @@ contract GauntletReactiveTest is Test, Deployers {
     }
 
     function test_reactiveIgnoresOtherTopics() public {
-        GauntletReactive rc = new GauntletReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 1);
+        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 1);
         vm.recordLogs();
         rc.react(_cronLog(uint256(keccak256("SomethingElse()"))));
         Vm.Log[] memory logs = vm.getRecordedLogs();

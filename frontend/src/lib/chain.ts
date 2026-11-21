@@ -10,7 +10,7 @@ import {
 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import hookAbi from "../abi/GauntletHook.json";
+import hookAbi from "../abi/OorkaHook.json";
 import erc20Abi from "../abi/MockERC20.json";
 import swapAbi from "../abi/PoolSwapTest.json";
 
@@ -112,7 +112,7 @@ const FRIENDLY: Record<string, string> = {
   EpochNotOver: "The epoch isn't over yet. Skip to the epoch end first.",
   PriceDeviation: "The pool price moved too far inside this block. Try again in the next block.",
   BondTooSmall: "The bond is below the minimum.",
-  TooManyCurators: "The gauntlet is full (8 curators max).",
+  TooManyCurators: "The arena is full (8 curators max).",
   NotCuratorOwner: "Only the curator's owner can do that.",
   IsIncumbent: "The seat holder can't exit. Lose the seat first.",
   BadRange: "That range isn't valid for this pool.",

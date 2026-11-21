@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One command local demo: anvil chain + Gauntlet deploy + frontend.
+# One command local demo: anvil chain + Oorka deploy + frontend.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PORT_RPC=8545

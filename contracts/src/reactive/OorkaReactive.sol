@@ -3,9 +3,9 @@ pragma solidity 0.8.26;
 
 import {AbstractPausableReactive} from "reactive-lib/abstract-base/AbstractPausableReactive.sol";
 
-/// @title GauntletReactive
-/// @notice Reactive Network half of Gauntlet's keeper-free automation. It subscribes to one of Reactive Network's
-/// built-in CRON events and, every `ticksPerPoke` ticks, sends a callback to GauntletKeeper on the hook's chain.
+/// @title OorkaReactive
+/// @notice Reactive Network half of Oorka's keeper-free automation. It subscribes to one of Reactive Network's
+/// built-in CRON events and, every `ticksPerPoke` ticks, sends a callback to OorkaKeeper on the hook's chain.
 /// The keeper checks whether the epoch is over and settles it. No bot, no off-chain keeper, no trusted operator.
 ///
 /// CRON topics on Reactive Network (topic_0, emitted by the system contract):
@@ -14,7 +14,7 @@ import {AbstractPausableReactive} from "reactive-lib/abstract-base/AbstractPausa
 ///   Cron100   every 100 blocks     0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70
 ///   Cron1000  every 1,000 blocks   0xe20b31294d84c3661ddc8f423abb9c70310d0cf172aa2714ead78029b325e3f4
 /// Pick a cadence a little faster than the hook's epoch length, so the seat changes hands soon after an epoch ends.
-contract GauntletReactive is AbstractPausableReactive {
+contract OorkaReactive is AbstractPausableReactive {
     uint64 public constant CALLBACK_GAS_LIMIT = 3_000_000; // a takeover migrates the vault: budget for it
 
     uint256 public immutable cronTopic;
