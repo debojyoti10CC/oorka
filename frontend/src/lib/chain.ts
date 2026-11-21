@@ -119,6 +119,14 @@ let injected: ReturnType<typeof createWalletClient> | null = null;
 export const hasInjectedWallet = () => typeof window !== "undefined" && !!(window as any).ethereum;
 export const connectedAddress = () => connected;
 
+// tiny store so every page (nav, swap, arena, vault, curate) sees the same wallet
+const walletListeners = new Set<() => void>();
+export function subscribeWallet(fn: () => void) {
+  walletListeners.add(fn);
+  return () => walletListeners.delete(fn);
+}
+const notifyWallet = () => walletListeners.forEach((fn) => fn());
+
 export async function connectWallet(): Promise<Address> {
   const eth = (window as any).ethereum;
   if (!eth) throw new Error("No browser wallet found. Install MetaMask or Rabby, or watch read-only.");
@@ -131,8 +139,10 @@ export async function connectWallet(): Promise<Address> {
     await injected.switchChain({ id: chain.id });
   }
   connected = addr;
+  notifyWallet();
   eth.on?.("accountsChanged", (a: string[]) => {
     connected = (a?.[0] as Address) ?? null;
+    notifyWallet();
   });
   return addr;
 }
