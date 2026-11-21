@@ -136,56 +136,57 @@ Figure~\ref{fig:arch} shows the components. One contract, \code{OorkaHook}, is t
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
     x=1cm,y=1cm,
-    mod/.style={draw=ink!70,rounded corners=2pt,fill=white,font=\footnotesize,align=center,minimum width=3.8cm,minimum height=0.62cm,inner sep=2pt},
-    act/.style={draw=ink,rounded corners=3pt,fill=paper,font=\small,align=center,minimum width=3.6cm,minimum height=1.0cm,inner sep=3pt},
+    mod/.style={draw=ink!70,rounded corners=2pt,fill=white,font=\footnotesize,align=center,text width=4.4cm,minimum height=0.62cm,inner sep=3pt},
+    pos/.style={mod,text width=3.8cm},
+    act/.style={draw=ink,rounded corners=3pt,fill=paper,font=\small,align=center,text width=3.2cm,minimum height=1.0cm,inner sep=4pt},
     sub/.style={font=\scriptsize\color{ink2}},
     edge/.style={-{Stealth[length=2.2mm]},thick,color=ink},
     redge/.style={edge,dashed,color=ink2},
     tag/.style={font=\scriptsize\ttfamily,color=ink,above,inner sep=2pt},
   ]
-  % ---------------- containers
-  \draw[accent,thick,rounded corners=4pt,fill=accent!6] (4.4,-1.4) rectangle (8.8,3.7);
+  % ---------------- containers (hook: x 3.8..9.4, pool manager: x 13.0..17.6)
+  \draw[accent,thick,rounded corners=4pt,fill=accent!6] (3.8,-1.4) rectangle (9.4,3.7);
   \node[font=\bfseries\color{accent}] at (6.6,3.3) {OorkaHook};
-  \draw[ink2,thick,rounded corners=4pt,fill=paper] (12.0,-1.4) rectangle (16.2,3.7);
-  \node[font=\bfseries\color{ink}] at (14.1,3.3) {PoolManager};
+  \draw[ink2,thick,rounded corners=4pt,fill=paper] (13.0,-1.4) rectangle (17.6,3.7);
+  \node[font=\bfseries\color{ink}] at (15.3,3.3) {PoolManager};
 
   % ---------------- hook modules
   \node[mod] at (6.6,2.55) {Curator registry \& paper NAVs};
-  \node[mod] at (6.6,1.65) {Vault: ERC-20 shares + idle};
-  \node[mod] at (6.6,0.75) {Block-open price \& epoch TWAP};
+  \node[mod] at (6.6,1.65) {Vault: ERC-20 shares \& idle balances};
+  \node[mod] at (6.6,0.75) {Pricing: block-open \& epoch TWAP};
   \node[mod] at (6.6,-0.15) {Benchmark report};
   \node[sub] at (6.6,-0.95) {one contract, one pool};
 
   % ---------------- pool manager positions
-  \node[mod,minimum width=3.6cm,minimum height=0.9cm,fill=amber!10,draw=amber] at (14.1,2.4) {Vault position\\[-1pt]{\scriptsize salt $=2^{256}-1$}};
-  \node[mod,minimum width=3.6cm,minimum height=0.9cm,fill=accent!10,draw=accent] at (14.1,1.15) {Probe positions\\[-1pt]{\scriptsize salt $=$ curator id, $L=10^{9}$}};
-  \node[mod,minimum width=3.6cm] at (14.1,0.0) {Third-party LPs};
-  \node[sub] at (14.1,-0.95) {ordinary v4 pool};
+  \node[pos,minimum height=0.95cm,fill=amber!10,draw=amber] at (15.3,2.35) {Vault position\\[-1pt]{\scriptsize salt $=2^{256}-1$}};
+  \node[pos,minimum height=0.95cm,fill=accent!10,draw=accent] at (15.3,1.1) {Probe positions\\[-1pt]{\scriptsize salt $=$ curator id, $L=10^{9}$}};
+  \node[pos] at (15.3,-0.05) {Third-party LPs};
+  \node[sub] at (15.3,-0.95) {ordinary v4 pool};
 
-  % ---------------- actors
-  \node[act] (dep) at (0,2.4)  {Depositors\\[-1pt]{\scriptsize\color{ink2} deposit / withdraw}};
-  \node[act] (inc) at (0,0.8)  {Incumbent curator\\[-1pt]{\scriptsize\color{ink2} holds the seat}};
-  \node[act] (cha) at (0,-0.8) {Challengers\\[-1pt]{\scriptsize\color{ink2} bond + declared range}};
-  \node[act] (trd) at (0,-2.8) {Traders \& arbitrageurs\\[-1pt]{\scriptsize\color{ink2} swap as usual}};
+  % ---------------- actors (right edge at x = 1.2)
+  \node[act] (dep) at (-0.6,2.4)  {Depositors\\[-1pt]{\scriptsize\color{ink2} deposit / withdraw}};
+  \node[act] (inc) at (-0.6,0.8)  {Incumbent curator\\[-1pt]{\scriptsize\color{ink2} holds the seat}};
+  \node[act] (cha) at (-0.6,-0.8) {Challengers\\[-1pt]{\scriptsize\color{ink2} bond + declared range}};
+  \node[act] (trd) at (-0.6,-2.8) {Traders \& arbitrageurs\\[-1pt]{\scriptsize\color{ink2} swap as usual}};
 
   % ---------------- automation row
-  \node[act,fill=violet!8,draw=violet,minimum width=4.4cm] (kp) at (6.6,5.3) {OorkaKeeper\\[-1pt]{\scriptsize\color{ink2} destination chain}};
-  \node[act,fill=violet!8,draw=violet,minimum width=4.2cm] (rn) at (14.1,5.3) {Reactive Network\\[-1pt]{\scriptsize\color{ink2} CRON $\rightarrow$ OorkaReactive}};
+  \node[act,fill=violet!8,draw=violet,text width=4.6cm] (kp) at (6.6,5.3) {OorkaKeeper\\[-1pt]{\scriptsize\color{ink2} on the hook's chain}};
+  \node[act,fill=violet!8,draw=violet,text width=4.0cm] (rn) at (15.3,5.3) {Reactive Network\\[-1pt]{\scriptsize\color{ink2} CRON $\rightarrow$ OorkaReactive}};
 
   % ---------------- edges: actors -> hook
-  \draw[edge] (1.8,2.4)  -- node[tag]{deposit}      (4.4,2.4);
-  \draw[edge] (1.8,0.8)  -- node[tag]{declareRange} (4.4,0.8);
-  \draw[edge] (1.8,-0.8) -- node[tag]{register}     (4.4,-0.8);
+  \draw[edge] (dep.east) -- node[tag]{deposit}      (3.8,2.4);
+  \draw[edge] (inc.east) -- node[tag]{declareRange} (3.8,0.8);
+  \draw[edge] (cha.east) -- node[tag]{register}     (3.8,-0.8);
 
   % ---------------- edges: hook <-> pool manager
-  \draw[redge] (12.0,2.6) -- node[tag]{beforeSwap}         (8.8,2.6);
-  \draw[edge]  (8.8,1.3)  -- node[tag]{modifyLiquidity}    (12.0,1.3);
-  \draw[redge] (12.0,0.0) -- node[tag]{getFeeGrowthInside} (8.8,0.0);
+  \draw[redge] (13.0,2.6) -- node[tag]{beforeSwap}         (9.4,2.6);
+  \draw[edge]  (9.4,1.3)  -- node[tag]{modifyLiquidity}    (13.0,1.3);
+  \draw[redge] (13.0,0.0) -- node[tag]{getFeeGrowthInside} (9.4,0.0);
 
   % ---------------- edges: traders and automation
-  \draw[edge] (1.8,-2.8) -- node[tag,pos=0.45]{swap} (14.1,-2.8) -- (14.1,-1.4);
+  \draw[edge] (trd.east) -- node[tag,pos=0.45]{swap} (15.3,-2.8) -- (15.3,-1.4);
   \draw[edge] (rn.west) -- node[tag]{callback} (kp.east);
-  \draw[edge] (kp.south) -- node[tag,right,xshift=2pt]{settleEpoch} (6.6,3.7);
+  \draw[edge] (kp.south) -- node[tag,right,xshift=2pt,yshift=-6pt]{settleEpoch} (6.6,3.7);
 \end{tikzpicture}}
 \caption{Architecture. The hook owns two kinds of positions inside the PoolManager, separated by salt. The vault position holds real depositor capital at the incumbent's range. Probe positions hold dust liquidity at every declared range, so the pool keeps fee history at those ticks. Reactive Network triggers settlement without an off-chain keeper.}
 \label{fig:arch}
