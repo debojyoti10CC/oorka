@@ -22,7 +22,7 @@ jobs:
         run: |
           forge install Uniswap/v4-periphery@c6e4754dab11bd38c6f08ac51c3c868569e93d64 --no-git
           forge install foundry-rs/forge-std --no-git
-          forge install Reactive-Network/reactive-lib@1eea5bae12ae557d589f9f0f0edae2faa47cb262 --no-git
+          forge install Reactive-Network/reactive-lib@f6990ce3526928d039fec78855b2004ff8d65c9f --no-git
 
       - name: Build
         run: forge build --sizes
