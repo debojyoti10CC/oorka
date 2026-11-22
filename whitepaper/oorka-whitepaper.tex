@@ -255,8 +255,8 @@ with margin $m$ in basis points. Wins accumulate into a streak, and a loss reset
   \node[proc,right=0.9cm of d2,minimum width=2.6cm] (z) {streak$_i \leftarrow 0$};
   \node[decision,below=1.6cm of d2] (d3) {any streak\\$\ge W$?};
   \coordinate (join) at ($(d3.north)+(0,0.7)$);
-  \node[proc,right=1.4cm of d3,yshift=-1.0cm,minimum width=4.2cm,fill=accent!8,draw=accent] (t) {\textbf{Takeover}: slash $h$'s bond to\\depositors, reset all streaks,\\migrate vault to winner's range};
-  \node[proc,below=of d3] (roll) {roll baselines: $\NAV^{\text{start}}_i \leftarrow \NAV_i(\bar P)$, vault share price};
+  \node[proc,right=1.4cm of d3,minimum width=4.2cm,fill=accent!8,draw=accent] (t) {\textbf{Takeover}: slash $h$'s bond to\\depositors, reset all streaks,\\migrate vault to winner's range};
+  \node[proc,below=1.3cm of d3] (roll) {roll baselines: $\NAV^{\text{start}}_i \leftarrow \NAV_i(\bar P)$, vault share price};
   \node[term,below=of roll] (e) {epoch $\leftarrow$ epoch $+1$};
 
   \draw[arr] (s) -- (d1);
@@ -272,7 +272,7 @@ with margin $m$ in basis points. Wins accumulate into a streak, and a loss reset
   \draw[thick,color=ink] (w.south) |- (join);
   \draw[thick,color=ink] (z.south) |- (join);
   \draw[arr] (join) -- (d3.north);
-  \draw[arr] (d3.east) -- node[lbl,above]{yes} ++(0.7,0) |- (t.west);
+  \draw[arr] (d3.east) -- node[lbl,above]{yes} (t.west);
   \draw[arr] (t) |- (roll);
   \draw[arr] (d3) -- node[lbl,right]{no} (roll);
   \draw[arr] (roll) -- (e);
