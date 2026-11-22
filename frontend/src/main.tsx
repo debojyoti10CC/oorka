@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App, { type View } from "./App";
 import Swap from "./Swap";
 import { WalletButton } from "./lib/wallet";
+import { NavMenu, type MenuGroup } from "./NavMenu";
 import Landing from "./Landing";
 import Docs from "./Docs";
 import "./styles.css";
@@ -14,6 +15,48 @@ type Route = "home" | "swap" | "arena" | "vault" | "curate" | "docs";
 const ROUTES: Route[] = ["swap", "arena", "vault", "curate", "docs"];
 const routeOf = (hash: string): Route => ROUTES.find((r) => hash.startsWith(`#/${r}`)) ?? "home";
 const LABEL: Record<Route, string> = { home: "Home", swap: "Swap", arena: "Arena", vault: "Vault", curate: "Curate", docs: "Docs" };
+
+const PRODUCT: MenuGroup[] = [
+  {
+    label: "Use it",
+    items: [
+      { title: "Swap", desc: "Trade tETH and tUSD with an exact on-chain quote.", href: "#/swap", tone: "violet", art: "swap" },
+      { title: "Vault", desc: "Deposit once. The winning curator manages it.", href: "#/vault", tone: "blue", art: "vault" },
+    ],
+  },
+  {
+    label: "Compete",
+    items: [
+      { title: "Arena", desc: "Every range scored live. Watch the seat change hands.", href: "#/arena", tone: "coral", art: "arena" },
+      { title: "Curate", desc: "Declare a range, post a bond, challenge for the seat.", href: "#/curate", tone: "green", art: "curate" },
+    ],
+  },
+];
+
+const RESOURCES: MenuGroup[] = [
+  {
+    items: [
+      { title: "Documentation", desc: "Mechanism, scoring math, defences and figures.", href: "#/docs", tone: "lilac", art: "docs" },
+      {
+        title: "Whitepaper",
+        desc: "The full design, proofs and limits, in LaTeX.",
+        href: `${REPO_URL}/blob/main/whitepaper/oorka-whitepaper.tex`,
+        external: true,
+        tone: "amber",
+        art: "paper",
+      },
+      { title: "Source code", desc: "Hook, Reactive keeper, tests and this site.", href: REPO_URL, external: true, tone: "violet", art: "code" },
+      {
+        title: "Live contracts",
+        desc: "Unichain Sepolia and Reactive Lasna addresses.",
+        href: `${REPO_URL}#live-deployment-unichain-sepolia--reactive-lasna`,
+        external: true,
+        tone: "green",
+        art: "chain",
+      },
+    ],
+  },
+];
 
 function Shell() {
   const [route, setRoute] = useState<Route>(routeOf(window.location.hash));
@@ -42,13 +85,10 @@ function Shell() {
             Oorka
           </a>
           <div className="nav-links">
-            {ROUTES.map((r) => (
-              <a key={r} href={`#/${r}`} aria-current={route === r ? "page" : undefined}>
-                {LABEL[r]}
-              </a>
-            ))}
-            <a className="ext" href={REPO_URL} target="_blank" rel="noreferrer">
-              GitHub
+            <NavMenu label="Product" groups={PRODUCT} active={["swap", "arena", "vault", "curate"].includes(route)} />
+            <NavMenu label="Resources" groups={RESOURCES} active={route === "docs"} />
+            <a href="#/arena" className="nav-direct" aria-current={route === "arena" ? "page" : undefined}>
+              Arena
             </a>
           </div>
           <WalletButton />
