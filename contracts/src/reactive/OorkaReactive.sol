@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {AbstractPausableReactive} from "reactive-lib/abstract-base/AbstractPausableReactive.sol";
+import {IPayable} from "reactive-lib/interfaces/IPayable.sol";
 
 /// @title OorkaReactive
 /// @notice Reactive Network half of Oorka's keeper-free automation. It subscribes to one of Reactive Network's
@@ -16,6 +17,8 @@ import {AbstractPausableReactive} from "reactive-lib/abstract-base/AbstractPausa
 /// Pick a cadence a little faster than the hook's epoch length, so the seat changes hands soon after an epoch ends.
 contract OorkaReactive is AbstractPausableReactive {
     uint64 public constant CALLBACK_GAS_LIMIT = 3_000_000; // a takeover migrates the vault: budget for it
+    /// @notice Reactive Network's fee-charging system contract (Mainnet and Lasna).
+    address public constant SYSTEM_CONTRACT = 0x8888888888888888888888888888888888888888;
 
     uint256 public immutable cronTopic;
     uint256 public immutable destinationChainId;
@@ -31,6 +34,12 @@ contract OorkaReactive is AbstractPausableReactive {
         destinationChainId = _destinationChainId;
         keeper = _keeper;
         ticksPerPoke = _ticksPerPoke == 0 ? 1 : _ticksPerPoke;
+        // Reactive Network now charges fees through the system contract at 0x8888…8888, while reactive-lib
+        // (legacy) only trusts 0x…fffFfF. Without this, the system contract's pay() call is rejected, the debt
+        // sticks, and any debt above zero stops react() from running. Accept the new address for pay(), and point
+        // coverDebt() at it.
+        addAuthorizedSender(SYSTEM_CONTRACT);
+        vendor = IPayable(payable(SYSTEM_CONTRACT));
         if (!vm) {
             service.subscribe(block.chainid, address(service), _cronTopic, REACTIVE_IGNORE, REACTIVE_IGNORE, REACTIVE_IGNORE);
         }

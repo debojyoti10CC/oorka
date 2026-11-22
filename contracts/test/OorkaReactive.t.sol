@@ -152,6 +152,20 @@ contract OorkaReactiveTest is Test, Deployers {
         assertEq(rc.ticks(), 2);
     }
 
+    function test_reactivePaysTheCurrentSystemContract() public {
+        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 1);
+        vm.deal(address(rc), 1 ether);
+        address sys = rc.SYSTEM_CONTRACT();
+        // the fee-charging system contract can collect what's owed...
+        vm.prank(sys);
+        rc.pay(0.01 ether);
+        assertEq(sys.balance, 0.01 ether);
+        // ...nobody else can
+        vm.prank(makeAddr("stranger"));
+        vm.expectRevert("Authorized sender only");
+        rc.pay(0.01 ether);
+    }
+
     function test_reactiveIgnoresOtherTopics() public {
         OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 1);
         vm.recordLogs();
