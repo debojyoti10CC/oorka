@@ -6,7 +6,8 @@
 //
 // artifactsDir: the unpacked "contracts-out" CI artifact (folders like OorkaHook.sol/OorkaHook.json).
 // envFile: file with PRIVATE_KEY=0x... (default ../../.oorka-deployer.env). Optional overrides via env vars:
-//   RPC_URL, POOL_MANAGER, CALLBACK_PROXY, EPOCH_SECONDS, KEEPER_FUNDING_ETH
+//   RPC_URL, POOL_MANAGER, CALLBACK_PROXY, EPOCH_SECONDS
+// Then run scripts/deploy-reactive.mjs to add the Reactive Network keeper.
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -40,7 +41,6 @@ const RPC_URL = process.env.RPC_URL ?? "https://sepolia.unichain.org";
 const POOL_MANAGER = process.env.POOL_MANAGER ?? "0x00b036b58a818b1bc34d502d3fe730db729e62ac";
 const CALLBACK_PROXY = process.env.CALLBACK_PROXY ?? "0x775c9B990ADe401060B78D0e98684eEf8d2466C1"; // Reactive, Unichain Sepolia
 const EPOCH_SECONDS = BigInt(process.env.EPOCH_SECONDS ?? "600");
-const KEEPER_FUNDING = parseEther(process.env.KEEPER_FUNDING_ETH ?? "0.005");
 const CREATE2_DEPLOYER = "0x4e59b44847b379578588920cA78FbF26c0B4956C";
 
 const TICK_SPACING = 60;
@@ -52,7 +52,6 @@ const ALL_HOOK_MASK = (1n << 14n) - 1n;
 
 const art = (name) => JSON.parse(fs.readFileSync(path.join(artifactsDir, `${name}.sol`, `${name}.json`), "utf8"));
 const Hook = art("OorkaHook");
-const Keeper = art("OorkaKeeper");
 const Swap = art("PoolSwapTest");
 const Lp = art("PoolModifyLiquidityTest");
 const Token = art("MockERC20");
@@ -202,8 +201,9 @@ await write(hook, Hook.abi, "register", ["Mid Mia", r(START_TICK - 1020), r(STAR
 await write(hook, Hook.abi, "registerBenchmark", ["Benchmark", r(START_TICK - 6960), r(START_TICK + 4080)], "registerBenchmark");
 await write(hook, Hook.abi, "deposit", [parseEther("50"), parseEther("150000"), 0n], "deposit");
 
-log("Reactive keeper (callback contract on this chain)");
-const keeper = await deploy(Keeper, [CALLBACK_PROXY, hook, false], "OorkaKeeper", KEEPER_FUNDING);
+// The Reactive keeper is deployed separately by scripts/deploy-reactive.mjs: OorkaKeeper needs the OorkaReactive
+// address (on Reactive Network) at construction, so that script deploys OorkaReactive first.
+const keeper = null;
 
 const out = {
   chainId,

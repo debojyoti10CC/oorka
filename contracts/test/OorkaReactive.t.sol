@@ -8,14 +8,31 @@ import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {Currency} from "v4-core/types/Currency.sol";
 import {ModifyLiquidityParams} from "v4-core/types/PoolOperation.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-import {IReactive} from "reactive-lib/interfaces/IReactive.sol";
 import {OorkaHook} from "../src/OorkaHook.sol";
 import {OorkaKeeper, IOorkaHook} from "../src/reactive/OorkaKeeper.sol";
-import {OorkaReactive} from "../src/reactive/OorkaReactive.sol";
+import {OorkaReactive, IReactiveSystem} from "../src/reactive/OorkaReactive.sol";
+
+/// @notice Stand-in for Reactive Network's system contract at 0x8888…8888: accepts subscriptions, records
+/// callback requests, and reports debt.
+contract MockSystem {
+    uint256 public subscriptions;
+    uint256 public owed;
+    IReactiveSystem.CallbackConfiguration_V_1_0[] internal _requests;
+
+    function subscribe(uint256, address, uint256, uint256, uint256, uint256) external { subscriptions++; }
+    function unsubscribe(uint256, address, uint256, uint256, uint256, uint256) external { subscriptions--; }
+    function requestCallbackV_1_0(IReactiveSystem.CallbackConfiguration_V_1_0 memory c) external { _requests.push(c); }
+    function debt(address) external view returns (uint256) { return owed; }
+    function setDebt(uint256 d) external { owed = d; }
+    function requests() external view returns (uint256) { return _requests.length; }
+    function request(uint256 i) external view returns (IReactiveSystem.CallbackConfiguration_V_1_0 memory) { return _requests[i]; }
+    receive() external payable {}
+}
 
 /// @notice Keeper-free epoch settlement: Reactive CRON -> OorkaReactive -> callback -> OorkaKeeper -> hook.
-/// Reactive Network itself isn't available in a unit test, so the callback proxy is played by `proxy`, and the
-/// RVM id is this test contract (the keeper's deployer), exactly as it would be on a real deployment.
+/// Reactive Network itself isn't available in a unit test, so the system contract is a mock etched at 0x8888…8888,
+/// the callback proxy is played by `proxy`, and `reactiveAddr` stands for OorkaReactive's address, which the
+/// network injects as the callback's first argument.
 contract OorkaReactiveTest is Test, Deployers {
     uint256 constant CRON100 = 0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70;
     uint256 constant UNICHAIN_SEPOLIA = 1301;
@@ -23,6 +40,8 @@ contract OorkaReactiveTest is Test, Deployers {
     OorkaHook hook;
     OorkaKeeper keeper;
     address proxy = makeAddr("callbackProxy");
+    address reactiveAddr = makeAddr("oorkaReactive");
+    address constant SYS = 0x8888888888888888888888888888888888888888;
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
     uint256 inc;
@@ -64,7 +83,8 @@ contract OorkaReactiveTest is Test, Deployers {
         vm.prank(bob);
         chal = hook.register("Tight Bob", -240, 240, 100e18);
 
-        keeper = new OorkaKeeper(proxy, IOorkaHook(address(hook)), false);
+        keeper = new OorkaKeeper(proxy, reactiveAddr, IOorkaHook(address(hook)), false);
+        vm.etch(SYS, address(new MockSystem()).code);
     }
 
     function _trade() internal {
@@ -83,7 +103,7 @@ contract OorkaReactiveTest is Test, Deployers {
 
     function _poke() internal {
         vm.prank(proxy);
-        keeper.poke(address(this));
+        keeper.poke(reactiveAddr);
     }
 
     // ---------------- keeper ----------------
@@ -117,61 +137,112 @@ contract OorkaReactiveTest is Test, Deployers {
     }
 
     function test_onlyCallbackProxy() public {
-        vm.expectRevert("Authorized sender only");
-        keeper.poke(address(this));
+        vm.expectRevert(abi.encodeWithSelector(OorkaKeeper.NotAuthorized.selector, address(this)));
+        keeper.poke(reactiveAddr);
     }
 
     function test_onlyOurReactiveContract() public {
-        // a callback relayed for somebody else's reactive contract carries a different RVM id
+        // a callback relayed through the real proxy for somebody else's reactive contract carries their address
+        address other = makeAddr("someoneElsesReactive");
         vm.prank(proxy);
-        vm.expectRevert("Authorized RVM ID only");
-        keeper.poke(makeAddr("someoneElsesRvm"));
+        vm.expectRevert(abi.encodeWithSelector(OorkaKeeper.CallbackNotAuthorized.selector, other, reactiveAddr));
+        keeper.poke(other);
+    }
+
+    function test_keeperPaysOnlyTheProxy() public {
+        vm.deal(address(keeper), 1 ether);
+        vm.prank(proxy);
+        keeper.pay(0.01 ether);
+        assertEq(proxy.balance, 0.01 ether);
+        vm.prank(makeAddr("stranger"));
+        vm.expectRevert();
+        keeper.pay(0.01 ether);
     }
 
     // ---------------- reactive contract ----------------
-    function _cronLog(uint256 topic) internal view returns (IReactive.LogRecord memory l) {
-        l.chain_id = block.chainid;
-        l._contract = address(0xfffFfF);
-        l.topic_0 = topic;
-        l.block_number = block.number;
+    function _cronLog(uint256 topic) internal view returns (OorkaReactive.LogRecord memory l) {
+        l.chainId = block.chainid;
+        l.contractAddress = address(0xfffFfF);
+        l.topic0 = topic;
+        l.blockNumber = block.number;
     }
 
-    function test_reactiveEmitsCallbackEveryNTicks() public {
-        // no system contract at 0xfffFfF here, so this instance behaves like the ReactVM copy
-        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 2);
+    function _reactive(uint256 every) internal returns (OorkaReactive rc) {
+        rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, every);
+        rc.setKeeper(address(keeper));
+    }
 
-        vm.recordLogs();
+    function test_reactiveSubscribesToCronOnDeploy() public {
+        _reactive(1);
+        assertEq(MockSystem(payable(SYS)).subscriptions(), 1);
+    }
+
+    function test_reactiveRequestsCallbackEveryNTicks() public {
+        OorkaReactive rc = _reactive(2);
+        MockSystem sys = MockSystem(payable(SYS));
+
+        vm.prank(SYS);
         rc.react(_cronLog(CRON100));
-        assertEq(vm.getRecordedLogs().length, 0, "tick 1 of 2: nothing yet");
+        assertEq(sys.requests(), 0, "tick 1 of 2: nothing yet");
 
         vm.expectEmit(true, true, true, true, address(rc));
-        emit IReactive.Callback(
-            UNICHAIN_SEPOLIA, address(keeper), rc.CALLBACK_GAS_LIMIT(), abi.encodeWithSignature("poke(address)", address(0))
-        );
+        emit OorkaReactive.Poked(2);
+        vm.prank(SYS);
         rc.react(_cronLog(CRON100));
-        assertEq(rc.ticks(), 2);
+        assertEq(sys.requests(), 1);
+        IReactiveSystem.CallbackConfiguration_V_1_0 memory c = sys.request(0);
+        assertEq(c.chainId, UNICHAIN_SEPOLIA);
+        assertEq(c.recipient, address(keeper));
+        assertEq(c.gasLimit, rc.CALLBACK_GAS_LIMIT());
+        assertEq(c.payload, abi.encodeWithSignature("poke(address)", address(0)));
     }
 
-    function test_reactivePaysTheCurrentSystemContract() public {
-        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 1);
+    function test_reactOnlyFromSystem() public {
+        OorkaReactive rc = _reactive(1);
+        vm.expectRevert(abi.encodeWithSelector(OorkaReactive.NotAuthorized.selector, address(this)));
+        rc.react(_cronLog(CRON100));
+    }
+
+    function test_reactiveWaitsForKeeper() public {
+        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, 1);
+        vm.prank(SYS);
+        rc.react(_cronLog(CRON100));
+        assertEq(MockSystem(payable(SYS)).requests(), 0);
+        rc.setKeeper(address(keeper));
+        vm.expectRevert(OorkaReactive.KeeperAlreadySet.selector);
+        rc.setKeeper(address(1));
+    }
+
+    function test_reactivePaysTheSystemContract() public {
+        OorkaReactive rc = _reactive(1);
         vm.deal(address(rc), 1 ether);
-        address sys = rc.SYSTEM_CONTRACT();
-        // the fee-charging system contract can collect what's owed...
-        vm.prank(sys);
+        uint256 before = SYS.balance;
+        vm.prank(SYS);
         rc.pay(0.01 ether);
-        assertEq(sys.balance, 0.01 ether);
-        // ...nobody else can
+        assertEq(SYS.balance - before, 0.01 ether);
         vm.prank(makeAddr("stranger"));
-        vm.expectRevert("Authorized sender only");
+        vm.expectRevert();
         rc.pay(0.01 ether);
+    }
+
+    function test_pauseUnsubscribesAndResumeCoversDebt() public {
+        OorkaReactive rc = _reactive(1);
+        MockSystem sys = MockSystem(payable(SYS));
+        vm.deal(address(rc), 1 ether);
+        rc.setPaused(true);
+        assertEq(sys.subscriptions(), 0);
+        sys.setDebt(0.2 ether);
+        uint256 before = SYS.balance;
+        rc.setPaused(false);
+        assertEq(sys.subscriptions(), 1);
+        assertEq(SYS.balance - before, 0.2 ether, "debt settled before resubscribing");
     }
 
     function test_reactiveIgnoresOtherTopics() public {
-        OorkaReactive rc = new OorkaReactive(CRON100, UNICHAIN_SEPOLIA, address(keeper), 1);
-        vm.recordLogs();
+        OorkaReactive rc = _reactive(1);
+        vm.prank(SYS);
         rc.react(_cronLog(uint256(keccak256("SomethingElse()"))));
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        assertEq(logs.length, 0);
         assertEq(rc.ticks(), 0);
+        assertEq(MockSystem(payable(SYS)).requests(), 0);
     }
 }

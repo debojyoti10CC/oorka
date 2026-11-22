@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AbstractCallback} from "reactive-lib/abstract-base/AbstractCallback.sol";
-
 interface IOorkaHook {
     function epochInfo() external view returns (uint256 current, uint256 start, uint256 end, uint256 nowTs);
     function settleEpoch() external;
     function compound() external;
+}
+
+/// @notice Reactive Network callback proxy (the subset the keeper uses).
+interface ICallbackProxy {
+    function debt(address contract_) external view returns (uint256);
 }
 
 /// @title OorkaKeeper
@@ -14,10 +17,13 @@ interface IOorkaHook {
 /// schedule (see OorkaReactive). If the hook's epoch is over, the keeper settles it; otherwise it does nothing.
 /// `settleEpoch()` is permissionless, so the keeper needs no special rights on the hook. All it adds is liveness:
 /// the seat changes hands on time even when nobody is watching.
-/// @dev Deploy on the hook's chain with that chain's Reactive callback proxy, from the same EOA that deploys
-/// OorkaReactive on Reactive Network (that EOA is the RVM id the keeper accepts). Fund it with native gas:
-/// Reactive charges callback costs to the destination contract.
-contract OorkaKeeper is AbstractCallback {
+/// @dev Deploy on the hook's chain after OorkaReactive, passing that chain's Reactive callback proxy and the
+/// OorkaReactive address. Every callback is checked twice: it must come through the proxy, and the sender address
+/// the network injects into the first argument must be our reactive contract. Fund it with native gas: the proxy
+/// bills callback costs to the recipient.
+contract OorkaKeeper {
+    ICallbackProxy public immutable callbackProxy;
+    address public immutable callbackSender; // OorkaReactive on Reactive Network
     IOorkaHook public immutable hook;
     bool public immutable compoundOnIdle;
 
@@ -26,16 +32,27 @@ contract OorkaKeeper is AbstractCallback {
     event Compounded();
     event Idle(uint256 indexed epoch, uint256 secondsLeft);
 
-    constructor(address callbackProxy, IOorkaHook _hook, bool _compoundOnIdle)
-        payable
-        AbstractCallback(callbackProxy)
-    {
+    error NotAuthorized(address sender);
+    error CallbackNotAuthorized(address sender, address expected);
+    error InsufficientFunds(uint256 required, uint256 available);
+    error TransferFailed();
+
+    modifier onlyProxy() {
+        if (msg.sender != address(callbackProxy)) revert NotAuthorized(msg.sender);
+        _;
+    }
+
+    constructor(address _callbackProxy, address _callbackSender, IOorkaHook _hook, bool _compoundOnIdle) payable {
+        callbackProxy = ICallbackProxy(_callbackProxy);
+        callbackSender = _callbackSender;
         hook = _hook;
         compoundOnIdle = _compoundOnIdle;
     }
 
-    /// @param rvm Replaced by Reactive Network with the RVM id of the reactive contract that sent the callback.
-    function poke(address rvm) external authorizedSenderOnly rvmIdOnly(rvm) {
+    /// @param sender Replaced by Reactive Network with the address of the reactive contract that requested the
+    /// callback.
+    function poke(address sender) external onlyProxy {
+        if (sender != callbackSender) revert CallbackNotAuthorized(sender, callbackSender);
         (uint256 current,, uint256 end, uint256 nowTs) = hook.epochInfo();
         if (nowTs >= end) {
             // never let one failed settle wedge the schedule: report it and try again on the next tick
@@ -52,5 +69,26 @@ contract OorkaKeeper is AbstractCallback {
             } catch {}
         }
         emit Idle(current, end - nowTs);
+    }
+
+    // ---------------------------------------------------------------- payments
+    /// @notice Called by the callback proxy to collect what this contract owes for callbacks.
+    function pay(uint256 amount) external onlyProxy {
+        _pay(payable(msg.sender), amount);
+    }
+
+    /// @notice Settle outstanding debt to the proxy from this contract's balance.
+    function coverDebt() external {
+        _pay(payable(address(callbackProxy)), callbackProxy.debt(address(this)));
+    }
+
+    receive() external payable {}
+
+    function _pay(address payable to, uint256 amount) internal {
+        if (address(this).balance < amount) revert InsufficientFunds(amount, address(this).balance);
+        if (amount > 0) {
+            (bool ok,) = to.call{value: amount}("");
+            if (!ok) revert TransferFailed();
+        }
     }
 }
