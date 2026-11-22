@@ -11,3 +11,4 @@ frontend/*.tsbuildinfo
 local-chain/node_modules/
 local-chain/cache/
 local-chain/artifacts/
+ci-out/

@@ -116,6 +116,20 @@ Then open http://localhost:5173. That one command:
 
 **On Windows:** run `./demo.sh` from WSL (Ubuntu) with Foundry and Node installed there. Or split it: run `anvil --host 0.0.0.0` and the deploy steps from `demo.sh` inside WSL, then start the frontend from Windows with `cd frontend && npm install && npx vite`. WSL forwards `127.0.0.1:8545` to Windows, so the frontend reaches anvil. The frontend reads the RPC URL from `VITE_RPC_URL` (default `http://127.0.0.1:8545`).
 
+**Without Foundry (Node only).** Use this on any OS where forge or anvil can't run, or where native binaries are blocked. A Hardhat 2.20 devnet (pure-JS EVM, Cancun) plays anvil's role, and the contracts come prebuilt from CI:
+
+```bash
+# 1. devnet on :8545 (same dev accounts and chain id as anvil)
+cd local-chain && npm install && npm run node
+
+# 2. in a second terminal: fetch CI's build artifacts and deploy the local world
+gh run download -R debojyoti10CC/oorka -n contracts-out -D ../ci-out
+cd frontend && npm install && node scripts/deploy-local.mjs ../ci-out
+
+# 3. dashboard with Hardhat-aware time controls
+npx vite --mode hardhat
+```
+
 The frontend signs with anvil's dev keys, so there's no wallet popup. Use **Acting as** to switch between the depositor, fresh challenger wallets and the seeded curators.
 
 ### Tests
