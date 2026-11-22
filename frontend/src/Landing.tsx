@@ -36,7 +36,7 @@ export default function Landing() {
   const dep = useDeployments();
 
   return (
-    <main>
+    <main className="landing">
       {/* ---------------------------------------------------------------- hero */}
       <section className="hero hero-under-nav wrap">
         <div className="hero-bg" aria-hidden>
@@ -70,7 +70,7 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------------------------- how */}
-      <section className="section wrap" id="how">
+      <section className="section wrap edge edge-r" id="how">
         <div className="eyebrow">How it works</div>
         <h2 className="h2">Managers prove it before they touch your money.</h2>
         <div className="steps">
@@ -116,7 +116,7 @@ export default function Landing() {
       </div>
 
       {/* ---------------------------------------------------------------- why */}
-      <section className="section wrap" id="why">
+      <section className="section wrap edge edge-l" id="why">
         <div className="eyebrow">Why Oorka</div>
         <h2 className="h2">Curation as a competition that settles itself.</h2>
         <div className="bento">
@@ -198,7 +198,7 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------------------------- numbers */}
-      <section className="section wrap">
+      <section className="section wrap edge edge-r">
         <div className="eyebrow">By the numbers</div>
         <div className="stats">
           <div className="stat">
@@ -221,7 +221,7 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------------------------- compare */}
-      <section className="section wrap">
+      <section className="section wrap edge edge-l">
         <div className="eyebrow">Compared</div>
         <h2 className="h2">Auctions sell the seat. Oorka makes you earn it.</h2>
         <div className="compare">

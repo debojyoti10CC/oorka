@@ -655,3 +655,40 @@ html, body { overflow-x: clip; }
 @media (max-width: 420px) {
   .nav .brand-link { font-size: 0; gap: 0; } /* mark only; the word stays for screen readers */
 }
+/* inside the pill nav, controls follow the pill's curve */
+.nav.over .wallet, .nav.over .net-tag { border-radius: var(--radius-pill); }
+
+/* ---------- landing: dither accents bleeding in from the page edges below the hero */
+.landing { overflow-x: clip; }
+.landing .section.edge { position: relative; isolation: isolate; }
+.landing .section.edge::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: 0; width: min(26vw, 380px); height: 640px;
+  /* bayer-ish pixel grid: two offset layers of 3px squares in two violets */
+  background-image:
+    conic-gradient(from 90deg at 3px 3px, transparent 75%, #7c3aed 0),
+    conic-gradient(from 90deg at 3px 3px, transparent 75%, #c4b5fd 0);
+  background-size: 6px 6px, 6px 6px;
+  background-position: 0 0, 3px 3px;
+  /* organic edge: a union of soft blobs hugging the side */
+  -webkit-mask-image:
+    radial-gradient(closest-side, #000 0%, rgba(0,0,0,.55) 45%, transparent 100%),
+    radial-gradient(closest-side, rgba(0,0,0,.8) 0%, transparent 100%),
+    radial-gradient(closest-side, rgba(0,0,0,.6) 0%, transparent 100%);
+  mask-image:
+    radial-gradient(closest-side, #000 0%, rgba(0,0,0,.55) 45%, transparent 100%),
+    radial-gradient(closest-side, rgba(0,0,0,.8) 0%, transparent 100%),
+    radial-gradient(closest-side, rgba(0,0,0,.6) 0%, transparent 100%);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 110% 55%, 80% 42%, 70% 36%; mask-size: 110% 55%, 80% 42%, 70% 36%;
+  opacity: 1;
+}
+.landing .section.edge-l::before {
+  left: calc(50% - 50vw);
+  -webkit-mask-position: -60% 18%, -30% 80%, -20% 104%; mask-position: -60% 18%, -30% 80%, -20% 104%;
+}
+.landing .section.edge-r::before {
+  right: calc(50% - 50vw);
+  -webkit-mask-position: 160% 30%, 130% 84%, 120% -4%; mask-position: 160% 30%, 130% 84%, 120% -4%;
+}
+@media (max-width: 640px) { .landing .section.edge::before { width: 44vw; opacity: 0.35; } }
