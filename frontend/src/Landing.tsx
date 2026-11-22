@@ -1,54 +1,15 @@
 import { useEffect, useState } from "react";
-import { HOOK_ABI, IS_WALLET, addressUrl, chain, loadDeployments, publicClient, type Deployments } from "./lib/chain";
-import { fmt, sqrtPriceToPrice } from "./lib/math";
+import { IS_WALLET, addressUrl, chain, loadDeployments, type Deployments } from "./lib/chain";
 import { REPO_URL } from "./lib/site";
 import Dither from "./bits/Dither";
 import { Bolt, Coin, Crown, Pin, Ruler, Shield, Spark, Trophy } from "./Stickers";
 
-type Live = { price: number; settle: number; seat: string; left: number; block: bigint; epoch: number };
-
-function useLive() {
+function useDeployments() {
   const [dep, setDep] = useState<Deployments | null>(null);
-  const [live, setLive] = useState<Live | null>(null);
-  const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
-    loadDeployments().then(setDep).catch((e) => setErr(String(e.message ?? e)));
+    loadDeployments().then(setDep).catch(() => setDep(null));
   }, []);
-  useEffect(() => {
-    if (!dep) return;
-    let stop = false;
-    const read = async () => {
-      try {
-        const [sp, ssp, cs, ei, block] = await Promise.all([
-          publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "refSqrtPrice" }),
-          publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "settleSqrtPrice" }),
-          publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "getCurators" }),
-          publicClient.readContract({ address: dep.hook, abi: HOOK_ABI, functionName: "epochInfo" }),
-          publicClient.getBlockNumber(),
-        ]);
-        const e = ei as bigint[];
-        const seat = (cs as any[]).find((c) => c.incumbent)?.name ?? "nobody";
-        if (!stop)
-          setLive({
-            price: sqrtPriceToPrice(sp as bigint),
-            settle: sqrtPriceToPrice(ssp as bigint),
-            seat,
-            left: Number(e[2] - e[3]),
-            block,
-            epoch: Number(e[0]),
-          });
-      } catch (x) {
-        if (!stop) setErr("Live data unavailable right now.");
-      }
-    };
-    read();
-    const id = setInterval(read, IS_WALLET ? 8000 : 3000);
-    return () => {
-      stop = true;
-      clearInterval(id);
-    };
-  }, [dep]);
-  return { dep, live, err };
+  return dep;
 }
 
 function CopyBox({ text }: { text: string }) {
@@ -71,11 +32,8 @@ function CopyBox({ text }: { text: string }) {
   );
 }
 
-const mmss = (s: number) => (s <= 0 ? "settling" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
-
 export default function Landing() {
-  const { dep, live, err } = useLive();
-  const network = IS_WALLET ? chain.name : "local anvil";
+  const dep = useDeployments();
 
   return (
     <main>
@@ -110,49 +68,6 @@ export default function Landing() {
             Enter the arena ↗
           </a>
         </div>
-
-        <div className="live" aria-live="polite">
-          <div className="live-cell">
-            <div className="k">
-              <span className="pulse" aria-hidden /> tETH price
-            </div>
-            <div className="v accent">{live ? fmt(live.price, 2) : "…"}</div>
-          </div>
-          <div className="live-cell">
-            <div className="k">Settles at (epoch avg)</div>
-            <div className="v">{live ? fmt(live.settle, 2) : "…"}</div>
-          </div>
-          <div className="live-cell">
-            <div className="k">Seat holder</div>
-            <div className="v">{live?.seat ?? "…"}</div>
-          </div>
-          <div className="live-cell">
-            <div className="k">Epoch {live?.epoch ?? ""}</div>
-            <div className="v">{live ? mmss(live.left) : "…"}</div>
-          </div>
-          <div className="live-cell">
-            <div className="k">Block</div>
-            <div className="v">{live ? `#${live.block.toLocaleString("en-US")}` : "…"}</div>
-          </div>
-        </div>
-        <p className="live-caption">
-          {err ??
-            (dep ? (
-              <>
-                Read live from the hook on {network}
-                {addressUrl(dep.hook) && (
-                  <>
-                    {" · "}
-                    <a href={addressUrl(dep.hook)} target="_blank" rel="noreferrer" className="mono">
-                      {dep.hook.slice(0, 10)}…
-                    </a>
-                  </>
-                )}
-              </>
-            ) : (
-              "Connecting…"
-            ))}
-        </p>
       </section>
 
       {/* ---------------------------------------------------------------- how */}
