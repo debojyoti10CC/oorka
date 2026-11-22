@@ -256,7 +256,7 @@ export default function Swap() {
           </div>
 
           <button
-            className="flip"
+            className="swap-flip"
             aria-label={`Switch to selling ${outSym}`}
             onClick={() => {
               setSell(sell === "eth" ? "usd" : "eth");

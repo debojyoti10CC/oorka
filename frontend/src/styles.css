@@ -436,12 +436,12 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, input:focus-visible, 
 .swap-row-top { display: flex; justify-content: space-between; align-items: center; font-size: var(--font-size-md); color: var(--color-text-secondary); }
 .swap-row { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-4); }
 .swap-amount { flex: 1; min-width: 0; font-family: var(--font-family-mono); font-size: 32px; line-height: 40px; background: transparent; border: 0; padding: 0; color: var(--color-text-primary); }
-input.swap-amount { background: transparent; border: 0; padding: 0; border-radius: 0; }
+input.swap-amount { background: transparent; border: 0; padding: 0; border-radius: 0; font-family: var(--font-family-mono); font-size: 32px; line-height: 40px; }
 input.swap-amount:focus-visible { outline: none; }
 input.swap-amount[aria-invalid="true"] { color: var(--color-danger); }
 .swap-amount.out { color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .token { font-weight: 500; background: var(--color-surface-emphasis); border: 1px solid var(--color-border-default); border-radius: var(--radius-pill); padding: var(--space-3) var(--space-6); white-space: nowrap; }
-.flip { justify-self: center; width: 40px; height: 40px; min-height: 40px; padding: 0; justify-content: center; border-radius: var(--radius-xs); background: var(--color-surface-muted); margin: calc(-1 * var(--space-8)) 0; z-index: 1; font-family: var(--font-family-mono); }
+.swap-flip { justify-self: center; width: 40px; height: 40px; min-height: 40px; padding: 0; justify-content: center; border-radius: var(--radius-xs); background: var(--color-surface-muted); margin: calc(-1 * var(--space-8)) 0; z-index: 1; font-family: var(--font-family-mono); }
 .link-btn { background: none; border: 0; padding: 0; min-height: 0; color: var(--color-text-secondary); font-size: var(--font-size-md); }
 .link-btn:hover:not(:disabled) { background: none; color: var(--color-accent-text); }
 .swap-facts { margin: var(--space-4) 0 0; display: grid; gap: var(--space-3); padding: 0 var(--space-2); }
@@ -465,7 +465,7 @@ input.swap-amount[aria-invalid="true"] { color: var(--color-danger); }
   .nav-links { overflow-x: auto; scrollbar-width: none; }
   .nav-links .ext { display: none; }
   .swap-amount { font-size: 26px; }
-  .flip { min-height: 40px; }
+  .swap-flip { min-height: 40px; }
 }
 
 /* ---------- reflow fixes (A6: no page scroll at 320px) */
@@ -570,3 +570,4 @@ input.swap-amount[aria-invalid="true"] { color: var(--color-danger); }
   .copy-box { font-size: 12px; }
 }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 640px) { input.swap-amount { font-size: 26px; } }
