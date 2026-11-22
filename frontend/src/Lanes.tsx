@@ -17,8 +17,8 @@ export type CuratorRow = {
   benchmark: boolean;
 };
 
-export const LANE_COLORS = ["#E8A84E", "#3FC1A5", "#A98BF0", "#EF7B8A", "#6AA6FF", "#9BC75A", "#E58CC3", "#8FA9C7"];
-export const BENCH_COLOR = "#7d7d86";
+export const LANE_COLORS = ["#C2780F", "#13897A", "#7B4FC9", "#D0485C", "#2F6FD6", "#5E8A1F", "#B5568F", "#4F6B8A"];
+export const BENCH_COLOR = "#8a8a93";
 export const laneColor = (id: number) => LANE_COLORS[id % LANE_COLORS.length];
 export const colorOf = (c: { id: number; benchmark?: boolean }) => (c.benchmark ? BENCH_COLOR : laneColor(c.id));
 

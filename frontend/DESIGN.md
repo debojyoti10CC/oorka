@@ -1,6 +1,6 @@
 # Oorka design system
 
-Design intent, in one sentence: a clean, functional, dark interface that makes a live on-chain competition legible at a glance and lets developers and LPs act on it with keyboard, pointer or touch.
+Design intent, in one sentence: a clean, playful, light interface that makes a live on-chain competition legible at a glance and lets developers and LPs act on it with keyboard, pointer or touch.
 
 Foundations are adapted from the Stick It Up token set (stickitupx.com), applied to Oorka's three surfaces: the landing page (`#/`), the arena dashboard (`#/arena`) and the docs (`#/docs`). Every value below exists as a CSS custom property in `src/styles.css`. Components must reference tokens, never raw values.
 
@@ -20,25 +20,28 @@ Foundations are adapted from the Stick It Up token set (stickitupx.com), applied
 
 ### 2.1 Color (semantic)
 
+The theme is light and playful: a white canvas, near-black text, black pill CTAs, pastel gradient bento cards and die-cut sticker illustrations.
+
 | Token | Value | Use |
 |---|---|---|
-| `--color-surface-base` | `#000000` | Page canvas |
-| `--color-surface-muted` | `#0a0a0a` | Cards, panels, nav |
-| `--color-surface-subtle` | `#141416` | Inputs, hovered rows, code |
-| `--color-surface-raised` | `#ffffff` | Inverse elements only (the vault bar); never large areas |
-| `--color-text-primary` | `#ededed` | Headings, body, values |
-| `--color-text-secondary` | `#a1a1aa` | Labels, captions, muted copy (contrast 8.2:1 on base) |
-| `--color-text-tertiary` | `#71717a` | Decorative or non-essential text only, never body copy |
-| `--color-text-inverse` | `#0a0a0a` | Text on raised and accent surfaces |
-| `--color-border-default` | `rgba(255,255,255,0.10)` | Dividers, card outlines |
-| `--color-border-strong` | `rgba(255,255,255,0.22)` | Inputs, outline buttons, table headers |
-| `--color-accent` | `#ffbe25` | Primary action, live price, seat holder (contrast 12.6:1 on base) |
-| `--color-accent-hover` | `#ffcb52` | Primary hover |
-| `--color-focus` | `#ffbe25` | Focus ring |
-| `--color-success` | `#4ade80` | Wins, positive edge, live pulse |
-| `--color-danger` | `#f87171` | Errors, negative edge |
+| `--color-surface-base` | `#ffffff` | Page canvas, live strip, swap card |
+| `--color-surface-muted` | `#fafafa` | Cards and panels |
+| `--color-surface-subtle` | `#f4f4f5` | Inputs, hovered rows, code |
+| `--color-surface-emphasis` | `#e9e9ec` | Badges, token chips |
+| `--color-surface-raised` | `rgba(255,255,255,0.9)` | Sticky nav (over a backdrop blur) |
+| `--color-text-primary` | `#171717` | Headings, body, values (17.9:1 on white) |
+| `--color-text-secondary` | `#52525b` | Labels, captions (7.7:1) |
+| `--color-text-tertiary` | `#a1a1aa` | Decorative only, never body copy |
+| `--color-text-inverse` | `#ffffff` | Text on `--color-action` |
+| `--color-action` / `-hover` | `#0a0a0a` / `#27272a` | Primary CTAs (black pill) |
+| `--color-accent` | `#ffbe25` | Fills only: price pill, seat badge, highlighter, bars |
+| `--color-accent-text` | `#a15c00` | Accent as text or lines (5.0:1 on white); yellow text is never used |
+| `--color-border-default` / `-strong` | `rgba(0,0,0,.08)` / `.16` | Dividers, outlines |
+| `--color-focus` | `#2563eb` | Focus ring (visible on white and on every pastel) |
+| `--color-success` / `--color-danger` | `#15803d` / `#dc2626` | Wins and positive edge; errors and negative edge |
+| `--grad-yellow` / `-coral` / `-green` / `-blue` / `-lilac` | pastel vertical gradients | Bento and step cards. Text on them uses `--color-text-primary` or `#3f3f46` |
 
-**Deviation from the source:** the source's secondary text (`lab(47.9…)`, about `#727179`) only reaches about 4.3:1 on black. That fails AA for body-size text. Oorka uses `#a1a1aa` for secondary text and limits the source value to `--color-text-tertiary`, which carries no essential information.
+**Stickers.** Original flat SVGs (crown, coin, pin, bolt, shield, ruler, trophy, spark) in `src/Stickers.tsx`. Each has a 9px white die-cut outline and a soft drop shadow, and tilts on hover. Each one stands for a part of the mechanism. They are decorative (`aria-hidden`) and hidden under 640px.
 
 ### 2.2 Typography
 

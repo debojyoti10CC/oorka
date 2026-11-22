@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HOOK_ABI, IS_WALLET, addressUrl, chain, loadDeployments, publicClient, type Deployments } from "./lib/chain";
 import { fmt, sqrtPriceToPrice } from "./lib/math";
 import { REPO_URL } from "./lib/site";
+import { Bolt, Coin, Crown, Pin, Ruler, Shield, Spark, Trophy } from "./Stickers";
 
 type Live = { price: number; settle: number; seat: string; left: number; block: bigint; epoch: number };
 
@@ -49,6 +50,26 @@ function useLive() {
   return { dep, live, err };
 }
 
+function CopyBox({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      className="copy-box"
+      aria-label={`Copy: ${text}`}
+      onClick={() => {
+        navigator.clipboard?.writeText(text).then(() => {
+          setDone(true);
+          setTimeout(() => setDone(false), 1500);
+        });
+      }}
+    >
+      <span>git clone …/oorka</span>
+      <span aria-hidden>{done ? "✓" : "⧉"}</span>
+      <span className="visually-hidden" role="status">{done ? "Copied" : ""}</span>
+    </button>
+  );
+}
+
 const mmss = (s: number) => (s <= 0 ? "settling" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
 
 export default function Landing() {
@@ -62,19 +83,22 @@ export default function Landing() {
         <a className="pill" href="#/arena">
           <span className="tag">Live</span> Uniswap v4 hook on {IS_WALLET ? chain.name : "your local chain"} →
         </a>
+        <Crown size={92} className="float hide-md" style={{ left: "4%", top: 70, transform: "rotate(-12deg)" }} />
+        <Pin size={84} className="float" style={{ right: "6%", top: 90, transform: "rotate(10deg)" }} />
+        <Bolt size={86} className="float hide-md" style={{ left: "2%", top: 330, transform: "rotate(8deg)" }} />
+        <Coin size={80} className="float" style={{ right: "3%", top: 340, transform: "rotate(-8deg)" }} />
+        <Spark size={70} className="float hide-md" style={{ left: "16%", top: 470 }} />
         <h1 className="display">
-          The curator seat, <em>earned</em> on-chain.
+          The curator seat <Crown size={64} className="inline-sticker" /> is <em>earned</em>, on-chain.
         </h1>
         <p className="lede">
           Challengers prove their LP ranges with dust probe positions that Uniswap itself scores on real fee growth. The
           vault's liquidity follows whoever measurably wins. No keeper bot. No vote. No trust.
         </p>
         <div className="cta-row">
+          <CopyBox text="git clone https://github.com/debojyoti10CC/oorka" />
           <a className="btn primary lg" href="#/arena">
-            Enter the arena →
-          </a>
-          <a className="btn lg" href="#/docs">
-            How it works
+            Enter the arena ↗
           </a>
         </div>
 
@@ -172,15 +196,61 @@ export default function Landing() {
       <section className="section wrap" id="why">
         <div className="eyebrow">Why Oorka</div>
         <h2 className="h2">Curation as a competition that settles itself.</h2>
-        <div className="features">
-          <div className="feature">
-            <div className="viz">
+        <div className="bento">
+          <div className="yellow">
+            <h3>What's in the hook</h3>
+            <ul className="checks">
+              <li>Dust probe positions at every declared range</li>
+              <li>Paper NAVs scored on real v4 fee growth</li>
+              <li>Automatic takeover and vault migration</li>
+              <li>A fee only above the benchmark</li>
+            </ul>
+            <Crown size={88} className="corner" />
+          </div>
+          <div className="coral">
+            <h3>Earn the seat, earn the fee.</h3>
+            <p>
+              The seat holder is paid 10% of the value created above a passive benchmark and the high-water mark. There's
+              nothing for losses and nothing for doing what doing nothing would do.
+            </p>
+            <div className="viz" style={{ marginTop: 24 }}>
+              <div>vault growth&nbsp;&nbsp;&nbsp;&nbsp;+1.73%</div>
+              <div>benchmark&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+0.70%</div>
+              <div className="ok">fee to seat&nbsp;&nbsp;&nbsp;&nbsp;10% of the excess</div>
+            </div>
+            <Coin size={80} className="corner" />
+          </div>
+          <div className="green">
+            <h3>Hard to game. Nobody runs it.</h3>
+            <p>Settlement prices at the epoch's average. Donations revert. A Reactive CRON contract settles epochs.</p>
+            <div className="tiles">
+              <div className="tile">
+                <span className="box"><Shield size={64} /></span>
+                TWAP
+              </div>
+              <div className="tile">
+                <span className="box"><Bolt size={64} /></span>
+                Reactive
+              </div>
+              <div className="tile">
+                <span className="box"><Ruler size={64} /></span>
+                Benchmark
+              </div>
+            </div>
+          </div>
+          <div className="blue wide">
+            <h3>Proof, not a pitch deck.</h3>
+            <p>
+              Every score comes from v4's own feeGrowthInside at the declared ticks. Nobody self-reports a backtest; the
+              pool measures the forward test.
+            </p>
+            <div className="viz" style={{ marginTop: 24, maxWidth: 560 }}>
               <div className="viz-bars">
                 {[
-                  ["Tight", 8, 30, "#3FC1A5", "+1.80%"],
-                  ["Mid", 4, 48, "#A98BF0", "+1.10%"],
-                  ["Wide", 2, 84, "#E8A84E", "+0.74%"],
-                  ["Bench", 0, 96, "#7d7d86", "+0.70%"],
+                  ["Tight", 8, 30, "#13897A", "+1.80%"],
+                  ["Mid", 4, 48, "#7B4FC9", "+1.10%"],
+                  ["Wide", 2, 84, "#C2780F", "+0.74%"],
+                  ["Bench", 0, 96, "#8a8a93", "+0.70%"],
                 ].map(([n, l, w, c, g]) => (
                   <div className="viz-bar" key={n as string}>
                     <span>{n}</span>
@@ -194,56 +264,12 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-            <h3 className="h3">Proof, not a pitch deck.</h3>
-            <p>
-              Every score comes from v4's own feeGrowthInside at the declared ticks. Nobody self-reports a backtest; the
-              pool measures the forward test.
-            </p>
+            <Pin size={84} className="corner" />
           </div>
-          <div className="feature">
-            <div className="viz">
-              <div>vault growth&nbsp;&nbsp;&nbsp;&nbsp;<span className="hl">+1.73%</span></div>
-              <div>hurdle = max(flat, benchmark, high-water)</div>
-              <div>benchmark&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+0.70%</div>
-              <div>excess&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+1.03%</div>
-              <div className="ok">fee to seat&nbsp;&nbsp;&nbsp;&nbsp;10% of excess, in vault shares</div>
-            </div>
-            <h3 className="h3">Earn the seat, earn the fee.</h3>
-            <p>
-              The seat holder is paid only on value created above a passive benchmark and the high-water mark. There's
-              nothing for losses, for doing what doing nothing would do, or for winning back a drawdown.
-            </p>
-          </div>
-          <div className="feature">
-            <div className="viz">
-              <div>last-second push&nbsp;&nbsp;&nbsp;tick −8,090</div>
-              <div>held for&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;12s of 600s</div>
-              <div className="ok">settle tick&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 (unmoved)</div>
-              <div>donate()&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="hl">reverts</span></div>
-              <div>vault actions&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;deviation-guarded</div>
-            </div>
-            <h3 className="h3">Built to resist gaming.</h3>
-            <p>
-              Settlement uses the epoch's time-weighted price, donations that would inflate fee growth are rejected, and
-              every range change pays a switch cost.
-            </p>
-          </div>
-          <div className="feature">
-            <div className="viz">
-              <div className="viz-chips">
-                {["owner", "keeper bot", "oracle", "admin key", "governance vote"].map((t) => (
-                  <span key={t}>{t}</span>
-                ))}
-              </div>
-              <div style={{ marginTop: 16 }}>
-                Reactive CRON <span className="hl">→</span> OorkaKeeper <span className="hl">→</span> settleEpoch()
-              </div>
-            </div>
-            <h3 className="h3">Nobody runs it.</h3>
-            <p>
-              Settlement is permissionless and automated by a Reactive Network CRON contract. The keeper has no special
-              rights; it only adds liveness.
-            </p>
+          <div className="lilac">
+            <h3>Takeover, on time.</h3>
+            <p>Beat the seat holder for two epochs and the vault's liquidity moves to your range in one transaction.</p>
+            <Trophy size={92} className="corner" />
           </div>
         </div>
       </section>
