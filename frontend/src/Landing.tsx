@@ -59,8 +59,7 @@ export default function Landing() {
           The curator seat <Crown size={64} className="inline-sticker" /> is <em>earned</em>, on-chain.
         </h1>
         <p className="lede">
-          Challengers prove their LP ranges with dust probe positions that Uniswap itself scores on real fee growth. The
-          vault's liquidity follows whoever measurably wins. No keeper bot. No vote. No trust.
+          Curators compete on real fees. The winner runs the vault. No vote, no trust.
         </p>
         <div className="cta-row">
           <CopyBox text="git clone https://github.com/debojyoti10CC/oorka" />
