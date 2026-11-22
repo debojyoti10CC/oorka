@@ -174,8 +174,9 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
         <h2 id="keeper">Keeper-free settlement</h2>
         <p>
           <code>OorkaReactive</code> runs on Reactive Network (Lasna) and subscribes to a built-in CRON event. Every N
-          ticks it emits a callback to <code>OorkaKeeper</code> on the hook's chain. The keeper accepts only the Reactive
-          callback proxy and our own RVM id. If the epoch has ended it calls <code>settleEpoch()</code>; otherwise it emits
+          ticks it asks Reactive's system contract for a callback to <code>OorkaKeeper</code> on the hook's chain. The
+          keeper accepts only the Reactive callback proxy, and only when the injected sender is our own reactive
+          contract. If the epoch has ended it calls <code>settleEpoch()</code>; otherwise it emits
           <code>Idle</code>. A failed settle is logged and retried on the next tick.
         </p>
         <p>
@@ -196,7 +197,7 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
           <code>{`contracts/src/OorkaHook.sol              hook + vault (ERC-20 shares) + curator registry
 contracts/src/reactive/OorkaReactive.sol CRON subscriber on Reactive Network
 contracts/src/reactive/OorkaKeeper.sol   callback contract that settles epochs
-contracts/test/                          36 Foundry tests`}</code>
+contracts/test/                          42 Foundry tests`}</code>
         </pre>
 
         <h2 id="run">Run it</h2>

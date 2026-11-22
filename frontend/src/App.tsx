@@ -456,7 +456,7 @@ export default function App({ view = "arena" }: { view?: View }) {
               <a href={addressUrl(dep.keeper ?? "")} target="_blank" rel="noreferrer">
                 OorkaKeeper
               </a>{" "}
-              about every 12 minutes, which settles ended epochs on its own. Anyone can also settle by hand.
+              about every 17 minutes, which settles ended epochs on its own. Anyone can also settle by hand.
             </p>
           )}
         </div>

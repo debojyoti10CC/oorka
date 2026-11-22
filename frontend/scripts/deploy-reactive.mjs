@@ -8,7 +8,7 @@
 //   node scripts/deploy-reactive.mjs <artifactsDir> [envFile]
 //
 // artifactsDir: the unpacked "contracts-out" CI artifact. envFile: PRIVATE_KEY=0x... (default ../../.oorka-deployer.env)
-// Optional env overrides: REACTIVE_RPC_URL, REACTIVE_FUNDING, KEEPER_FUNDING_ETH, TICKS_PER_POKE
+// Optional env overrides: CRON (100|1000), REACTIVE_RPC_URL, REACTIVE_FUNDING, KEEPER_FUNDING_ETH, TICKS_PER_POKE
 import fs from "node:fs";
 import path from "node:path";
 import { createPublicClient, createWalletClient, defineChain, http, parseEther, parseGwei } from "viem";
@@ -27,9 +27,15 @@ const env = Object.fromEntries(
 const depFile = path.resolve(process.cwd(), "public/deployments.1301.json");
 const dep = JSON.parse(fs.readFileSync(depFile, "utf8"));
 
-const CRON100 = 0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70n;
+// Cron1000 (~17 min) by default: every tick is billed, and this stretches a testnet budget 10x. CRON=100 for ~2 min.
+const CRON_TOPICS = {
+  100: 0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70n,
+  1000: 0xe20b31294d84c3661ddc8f423abb9c70310d0cf172aa2714ead78029b325e3f4n,
+};
+const CRON = Number(process.env.CRON ?? "1000");
+const CRON_TOPIC = CRON_TOPICS[CRON];
 const REACTIVE_RPC = process.env.REACTIVE_RPC_URL ?? "https://lasna-rpc.rnk.dev/";
-const REACTIVE_FUNDING = parseEther(process.env.REACTIVE_FUNDING ?? "1");
+const REACTIVE_FUNDING = parseEther(process.env.REACTIVE_FUNDING ?? "0.35");
 const KEEPER_FUNDING = parseEther(process.env.KEEPER_FUNDING_ETH ?? "0.003");
 const TICKS_PER_POKE = BigInt(process.env.TICKS_PER_POKE ?? "1");
 
@@ -52,7 +58,7 @@ const client = async (rpc) => {
 const lasna = await client(REACTIVE_RPC);
 const uni = await client(dep.rpcUrl);
 // Lasna rejects a zero priority fee, which viem's estimate can produce there
-const lasnaFees = { maxFeePerGas: parseGwei("200"), maxPriorityFeePerGas: parseGwei("2") };
+const lasnaFees = { maxFeePerGas: parseGwei("110"), maxPriorityFeePerGas: parseGwei("2") };
 
 const wait = async (c, hash, what) => {
   const r = await c.pub.waitForTransactionReceipt({ hash });
@@ -66,7 +72,7 @@ console.log("1. OorkaReactive on Reactive Network", lasna.id);
 const rHash = await lasna.wallet.deployContract({
   abi: Reactive.abi,
   bytecode: Reactive.bytecode.object,
-  args: [CRON100, BigInt(uni.id), TICKS_PER_POKE],
+  args: [CRON_TOPIC, BigInt(uni.id), TICKS_PER_POKE],
   value: REACTIVE_FUNDING,
   ...lasnaFees,
 });
@@ -93,7 +99,7 @@ dep.reactive = {
   chainId: lasna.id,
   rpcUrl: REACTIVE_RPC,
   contract: reactive,
-  cronTopic: "Cron100",
+  cronTopic: `Cron${CRON}`,
   ticksPerPoke: Number(TICKS_PER_POKE),
   deployTx: rHash,
 };

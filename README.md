@@ -13,12 +13,12 @@ Built for the UHI11 Hookathon theme, **Active Management & Curation**. It hits t
 | Contract | Address |
 |---|---|
 | OorkaHook (hook + vault + curator registry) | [`0x86486253aC2C85CffaA711d297c64AF4eAb050A0`](https://sepolia.uniscan.xyz/address/0x86486253aC2C85CffaA711d297c64AF4eAb050A0) |
-| OorkaKeeper (Reactive callback, settles epochs) | [`0xe2816a99acc021bbe019214f96dac78e648f1509`](https://sepolia.uniscan.xyz/address/0xe2816a99acc021bbe019214f96dac78e648f1509) |
-| OorkaReactive (CRON subscriber, on Reactive Lasna) | [`0x086143eb1a65bdf2754f0b9190f85de6b638cb52`](https://lasna.reactscan.net/address/0x086143eb1a65bdf2754f0b9190f85de6b638cb52) |
+| OorkaKeeper (Reactive callback, settles epochs) | [`0x76eae12f2131e330a5c672d824ea46eef402fb97`](https://sepolia.uniscan.xyz/address/0x76eae12f2131e330a5c672d824ea46eef402fb97) |
+| OorkaReactive (CRON subscriber, on Reactive Lasna) | [`0xa1cd8b8f5ad20feeb506526b8f5ea477925ae2cd`](https://lasna.reactscan.net/address/0xa1cd8b8f5ad20feeb506526b8f5ea477925ae2cd) |
 | Uniswap v4 PoolManager (Unichain Sepolia) | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
 | tETH / tUSD test tokens | [`0x5387…a26b`](https://sepolia.uniscan.xyz/address/0x5387EeaE799738A34C982E705804Dfa95FDda26b) / [`0xaC15…0a6C`](https://sepolia.uniscan.xyz/address/0xaC150B417a0b1c76353Cf647A9434fBE49250a6C) |
 
-The pool is tETH/tUSD at about 3,000. It is seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit. Epochs last 10 minutes, and the Reactive CRON contract pokes the keeper about every 12 minutes. All addresses are in [`frontend/public/deployments.1301.json`](frontend/public/deployments.1301.json).
+The pool is tETH/tUSD at about 3,000. It is seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit. Epochs last 10 minutes, and the Reactive CRON contract (Cron1000) pokes the keeper about every 17 minutes, so an ended epoch settles within one tick. All addresses are in [`frontend/public/deployments.1301.json`](frontend/public/deployments.1301.json).
 
 Run the dashboard against it with any browser wallet. Test tokens are minted from the app.
 
@@ -74,25 +74,33 @@ The grey lane is the **benchmark**: the same 1,000 tUSD paper portfolio, parked 
 
 `settleEpoch()` is permissionless, but someone still has to call it. `src/reactive/` removes that someone:
 
-- **`OorkaReactive`** runs on Reactive Network. It subscribes to one of Reactive's built-in CRON events and, every `ticksPerPoke` ticks, emits a callback to the hook's chain.
-- **`OorkaKeeper`** runs on the hook's chain. It only accepts callbacks from the Reactive callback proxy *and* from our own reactive contract's RVM id. If the epoch is over it settles it, otherwise it emits `Idle`. A failed settle is reported (`SettleFailed`) and retried on the next tick, so it can't block the schedule.
+- **`OorkaReactive`** runs on Reactive Network. It subscribes to one of Reactive's built-in CRON events. The system contract calls its `react()` on every tick, and every `ticksPerPoke` ticks it requests a callback to the hook's chain (`requestCallbackV_1_0`). It is written for Reactive's current contract model, with `react()` called directly by the system contract at `0x8888…8888`, and it has an owner switch to pause and resume the subscription.
+- **`OorkaKeeper`** runs on the hook's chain. It only accepts callbacks from the Reactive callback proxy *and* only when the sender the network injects into the first argument is our own `OorkaReactive` address. If the epoch is over it settles it, otherwise it emits `Idle`. A failed settle is reported (`SettleFailed`) and retried on the next tick, so it can't block the schedule.
 
 The keeper has no special rights on the hook. All it adds is liveness: the seat changes hands on time even when nobody is watching. A takeover settle uses under 1.5M gas, half the 3M callback budget (checked in the tests).
 
-Deploy (Unichain Sepolia + Reactive Lasna), from the **same** EOA so the RVM id matches:
+Deploy (Unichain Sepolia + Reactive Lasna). The keeper needs the reactive contract's address at construction, so the reactive contract goes first and is pointed at the keeper afterwards with a one-shot `setKeeper`. `frontend/scripts/deploy-reactive.mjs` runs all three steps from the CI artifacts:
+
+```bash
+cd frontend
+node scripts/deploy-reactive.mjs <contracts-out artifact dir>   # CRON=100 for ~2 min ticks, default Cron1000
+```
+
+or by hand with Foundry:
 
 ```bash
 cd contracts
-# 1. keeper on the hook's chain, with Unichain Sepolia's Reactive callback proxy, funded for callback fees
-forge create src/reactive/OorkaKeeper.sol:OorkaKeeper --broadcast \
-  --rpc-url https://sepolia.unichain.org --private-key $PRIVATE_KEY --value 0.01ether \
-  --constructor-args 0x775c9B990ADe401060B78D0e98684eEf8d2466C1 $HOOK false
+# 1. reactive contract on Lasna: Cron1000 (~17 min), poke every tick, destination chain 1301
+forge create src/reactive/OorkaReactive.sol:OorkaReactive --broadcast   --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY --value 0.35ether   --constructor-args 0xe20b31294d84c3661ddc8f423abb9c70310d0cf172aa2714ead78029b325e3f4 1301 1
 
-# 2. reactive contract on Lasna: Cron100 (~12 min), poke every tick, destination chain 1301
-forge create src/reactive/OorkaReactive.sol:OorkaReactive --broadcast \
-  --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY --value 0.1ether \
-  --constructor-args 0xb49937fb8970e19fd46d48f7e3fb00d659deac0347f79cd7cb542f0fc1503c70 1301 $KEEPER 1
+# 2. keeper on the hook's chain: Unichain Sepolia's callback proxy, the reactive contract, the hook
+forge create src/reactive/OorkaKeeper.sol:OorkaKeeper --broadcast   --rpc-url https://sepolia.unichain.org --private-key $PRIVATE_KEY --value 0.003ether   --constructor-args 0x775c9B990ADe401060B78D0e98684eEf8d2466C1 $REACTIVE $HOOK false
+
+# 3. point the reactive contract at the keeper
+cast send $REACTIVE "setKeeper(address)" $KEEPER --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY
 ```
+
+Every CRON tick is billed whether or not anything happens, so pick the longest interval that fits the epoch length, and use `setPaused(true)` to stop it.
 
 Callback proxy addresses and CRON topics come from the [Reactive docs](https://dev.reactive.network/origins-and-destinations). Check them before deploying.
 
@@ -139,7 +147,7 @@ cd contracts
 forge test
 ```
 
-31 tests, covering:
+42 tests, covering:
 - the probe measuring fees
 - a takeover after the streak
 - slashing going to depositors
@@ -148,7 +156,7 @@ forge test
 - donations being rejected by the hook
 - the benchmark: starts flat, can't be moved, exited or seated, tracks the vault, doesn't use a curator slot
 - deposit/withdraw round trips
-- the Reactive keeper: no-op mid-epoch, settles an ended epoch, drives a full takeover alone, rejects foreign callers and foreign RVM ids, settle fits the callback gas budget
+- the Reactive keeper: no-op mid-epoch, settles an ended epoch, drives a full takeover alone, rejects foreign callers and foreign reactive contracts, only the system contract can call `react()`, callback requests carry the right chain/recipient/gas/payload, pause and resume (debt settled first), payments go only to the system contract or proxy, settle fits the callback gas budget
 - all the access-control reverts
 
 ### Testnet
@@ -168,7 +176,7 @@ That's the Unichain Sepolia PoolManager. Sepolia, Base Sepolia and Arbitrum Sepo
 
 | Partner | What it does in Oorka | Where in the code |
 |---|---|---|
-| **Reactive Network** | Keeper-free epoch settlement. A reactive contract subscribes to Reactive's CRON events and calls back to a keeper on the hook's chain. The keeper accepts only the Reactive callback proxy plus our own RVM id, and settles the epoch once it has ended. | [`contracts/src/reactive/OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) (CRON subscription, `react()`, `Callback` emit)<br>[`contracts/src/reactive/OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) (`AbstractCallback`, `poke()` authorisation and settlement)<br>[`contracts/test/OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (7 tests) |
+| **Reactive Network** | Keeper-free epoch settlement. A reactive contract subscribes to Reactive's CRON events and calls back to a keeper on the hook's chain. The keeper accepts only the Reactive callback proxy plus our own reactive contract's address, and settles the epoch once it has ended. | [`contracts/src/reactive/OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) (CRON subscription, `react()`, `requestCallbackV_1_0`)<br>[`contracts/src/reactive/OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) (proxy + sender authorisation, `poke()` settlement, `pay()`)<br>[`contracts/test/OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (13 tests) |
 
 No other partner integrations.
 
@@ -180,7 +188,7 @@ Oorka's hook, vault, scoring, benchmark, settlement price and keeper logic were 
   - `PoolManager`, `StateLibrary`, `TickMath`, `SqrtPriceMath` and `LiquidityAmounts`;
   - the test helpers `Deployers`, `PoolSwapTest` and `PoolModifyLiquidityTest`, used in tests and the local demo.
 - **solmate**: `ERC20` (vault shares) and `MockERC20` (test tokens).
-- **Reactive Network** [reactive-lib](https://github.com/Reactive-Network/reactive-lib): `AbstractPausableReactive` and `AbstractCallback`. The CRON subscription pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
+- **Reactive Network**: the system-contract and callback-proxy interfaces follow [reactive-lib-omni](https://github.com/Reactive-Network/reactive-lib-omni) (`AbstractReactive`, `AbstractCallback`, `AbstractPayer`), implemented inline to stay on solc 0.8.26. The CRON subscription pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
 - **Foundry** (forge, anvil), and **viem** + **React** + **Vite** for the dashboard.
 - **React Bits** [`<Dither />`](https://reactbits.dev): the animated hero background (`frontend/src/bits/Dither.jsx`), used unmodified.
 
@@ -190,7 +198,7 @@ Oorka's hook, vault, scoring, benchmark, settlement price and keeper logic were 
 contracts/
   src/OorkaHook.sol     the hook, the vault (ERC20 shares) and the curator registry, in one contract
   src/reactive/            OorkaReactive (Reactive Network CRON) + OorkaKeeper (callback, settles epochs)
-  test/                    31 Foundry tests (hook + reactive keeper)
+  test/                    42 Foundry tests (hook + reactive keeper)
   script/DeployLocal.s.sol local world with seeded curators
   script/DeployTestnet.s.sol deploy against a real v4 PoolManager
 frontend/                  Vite + React + viem dashboard
@@ -237,7 +245,7 @@ NAV      = value(position + fees + cash, blockOpenPrice)    // in tUSD
 | Original idea | 30% | Auction-managed AMM hooks (Chronus, Maestro, Turnstile in the UHI directory) *sell* the manager seat to the highest bidder. Oorka makes curators *earn* it with measured LP performance. Using dust probe positions to make v4 track fees at hypothetical ranges is, as far as we found, new. |
 | Unique execution | 25% | Pure v4 primitives (`getFeeGrowthInside`, salted positions, the unlock callback). No oracle, no off-chain service. Manipulation-resistant block-open pricing, donations blocked at the hook. Keeper-free settlement via Reactive Network. |
 | Impact | 20% | Turns "trust the manager" into "the manager is whoever is actually winning", and shows on-chain whether that beats a passive benchmark. Depositors get automatic manager replacement plus slashed bonds. Strategists get a permissionless way to prove skill without capital. |
-| Functionality | 15% | 31 passing tests, one-command demo, a full lifecycle with real swaps on a real PoolManager. |
+| Functionality | 15% | 42 passing tests, one-command demo, a full lifecycle with real swaps on a real PoolManager. |
 | Presentation | 10% | Live dashboard: lanes view, standings with sparklines, vault-vs-benchmark report, on-chain event log. |
 
 ## Pitch video script (about 3 minutes)
@@ -248,7 +256,7 @@ NAV      = value(position + fees + cash, blockOpenPrice)    // in tUSD
 4. **(1:20) Takeover.** *Skip to epoch end* and *Settle*, three times. Call out the qualifying epoch, the streak pips filling, then the takeover message and the vault bar jumping to Tony's range. Show the slashed bond in the event log.
 5. **(2:00) Regime change.** Click *Pump tETH*. Tony's bar goes hatched and Pam leads. "The hook will hand the seat back if this keeps up. Nobody had to vote."
 6. **(2:20) Does it pay?** Point at the Vault panel: vault vs benchmark, since start and this epoch. "Every settlement reports whether the contested seat beat sitting still."
-7. **(2:35) Safety.** Flash the attack/defense table. Mention block-open pricing, blocked donations, the Reactive keeper and the 31 tests.
+7. **(2:35) Safety.** Flash the attack/defense table. Mention block-open pricing, blocked donations, the Reactive keeper and the 42 tests.
 8. **(2:50) Close.** "Oorka: curation as a competition that settles itself on-chain."
 
 ## Next steps

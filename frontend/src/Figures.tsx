@@ -176,13 +176,13 @@ export function ReactiveSeqFig() {
   const msgs: [number, number, string, number, boolean?][] = [
     [90, 290, "CRON event (every k blocks)", 90],
     [290, 290, "ticks % N == 0", 130],
-    [290, 490, "Callback(1301, keeper, poke)", 175],
-    [490, 490, "check proxy & RVM id", 215],
+    [290, 490, "requestCallback → poke", 175],
+    [490, 490, "check proxy & sender", 215],
     [490, 690, "settleEpoch() if ended", 260],
     [690, 490, "Settled / SettleFailed / Idle", 300, true],
   ];
   return (
-    <Fig caption="Settlement automation. The reactive contract counts CRON ticks and sends a cross-chain callback. The keeper only accepts the callback proxy carrying its own RVM id. A failed settle is reported and retried on the next tick.">
+    <Fig caption="Settlement automation. The reactive contract counts CRON ticks and sends a cross-chain callback. The keeper only accepts the callback proxy carrying our reactive contract's address. A failed settle is reported and retried on the next tick.">
       <svg viewBox="0 0 780 340" role="img" aria-label="Sequence: Reactive CRON event to OorkaReactive, callback to OorkaKeeper, keeper checks the sender and calls settleEpoch on OorkaHook, which reports the result.">
         <Arrow id="a4" />
         {lanes.map(([t, x]) => (
