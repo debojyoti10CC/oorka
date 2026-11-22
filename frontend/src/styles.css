@@ -585,3 +585,73 @@ html, body { overflow-x: clip; }
 .pill { background: var(--color-surface-base); box-shadow: var(--shadow-1); }
 .pill .tag { background: #7c3aed; color: #ffffff; }
 .copy-box { box-shadow: var(--shadow-1); }
+
+/* ====================================================================== mega menu (NavMenu.tsx) */
+.navmenu { position: static; }
+.nav-inner { position: relative; }
+.navmenu-trigger {
+  border: 0; background: transparent; min-height: 36px; padding: 8px 12px; border-radius: var(--radius-pill);
+  color: var(--color-text-secondary); font-size: 0.92rem; font-weight: 500; gap: 6px;
+}
+.navmenu-trigger:hover:not(:disabled), .navmenu-trigger.open { background: var(--color-surface-subtle); color: var(--color-text-primary); }
+.navmenu-trigger.active { color: var(--color-text-primary); }
+.navmenu-trigger .chev { transition: transform var(--motion-normal) ease; }
+.navmenu-trigger.open .chev { transform: rotate(180deg); }
+.nav-links a.nav-direct { border-radius: var(--radius-pill); font-weight: 500; }
+
+.navmenu-panel {
+  position: absolute; top: calc(100% - 2px); right: 24px;
+  width: min(720px, calc(100vw - 32px)); display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px;
+  padding: 12px; background: var(--color-surface-base); border: 1px solid var(--color-border-default);
+  border-radius: 22px; box-shadow: 0 24px 60px rgba(17, 12, 46, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06); z-index: 30;
+  animation: menu-in var(--motion-slow) ease;
+}
+.navmenu-panel[hidden] { display: none; }
+@keyframes menu-in { from { transform: translateY(-6px); } to { transform: none; } }
+.navmenu-list { display: grid; align-content: start; }
+.navmenu-group + .navmenu-group { border-top: 1px solid var(--color-border-default); margin-top: 6px; padding-top: 6px; }
+.navmenu-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); padding: 10px 14px 4px; }
+.navmenu-item {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; text-decoration: none;
+  padding: 12px 14px; border-radius: 14px; color: var(--color-text-primary); transition: background var(--motion-instant) ease;
+}
+.navmenu-item:hover, .navmenu-item:focus-visible { background: var(--color-surface-subtle); }
+.navmenu-title { display: block; font-weight: 600; font-size: 0.98rem; }
+.navmenu-desc { display: block; color: var(--color-text-secondary); font-size: var(--font-size-md); line-height: 1.4; margin-top: 2px; }
+.navmenu-arrow { color: var(--color-text-tertiary); margin-top: 6px; transition: color var(--motion-instant) ease, transform var(--motion-instant) ease; }
+.navmenu-item:hover .navmenu-arrow { color: var(--color-accent-text); transform: translate(1px, -1px); }
+.menu-preview { width: 100%; height: 100%; min-height: 220px; border-radius: 18px; display: block; }
+.menu-preview rect, .menu-preview circle { transition: fill var(--motion-slow) ease; }
+
+@media (max-width: 1024px) {
+  .navmenu-panel { width: min(560px, calc(100vw - 32px)); grid-template-columns: minmax(0, 1fr); }
+  .menu-preview { display: none; }
+}
+@media (max-width: 640px) {
+  .nav-links .nav-direct { display: none; }
+  .navmenu { position: static; }
+  .navmenu-panel { left: 16px; right: 16px; width: auto; max-height: calc(100vh - 80px); overflow-y: auto; }
+}
+
+/* ---------- home: the nav floats as a frosted pill over the dither hero */
+.nav.over { padding-top: 12px; background: transparent; border-bottom-color: transparent; backdrop-filter: none; }
+.nav.over .nav-inner {
+  margin: 0 auto; width: calc(100% - 32px); max-width: 1132px; padding: 8px 8px 8px 20px;
+  background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(124, 58, 237, 0.14); border-radius: var(--radius-pill);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 28px -12px rgba(76, 29, 149, 0.28);
+}
+.nav.over .nav-links a:hover, .nav.over .navmenu-trigger:hover, .nav.over .navmenu-trigger.open { background: rgba(124, 58, 237, 0.08); }
+.hero.hero-under-nav { margin-top: calc(-1 * var(--nav-over-h, 68px)); padding-top: calc(var(--nav-over-h, 68px) + 96px); }
+.hero .lede { max-width: 62ch; text-wrap: balance; }
+/* the home hero fills the first screen so the next section never peeks into the dither */
+.hero.hero-under-nav { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 120px; }
+.hero.hero-under-nav .hero-bg { bottom: 0; }
+.hero.hero-under-nav + .section { padding-top: 96px; }
+@media (max-width: 640px) {
+  .nav.over .nav-inner { gap: 8px; padding: 6px 6px 6px 14px; width: calc(100% - 16px); }
+  .nav .nav-links a.nav-direct { display: none; } /* Arena is in the Product menu */
+}
+@media (max-width: 420px) {
+  .nav .brand-link { font-size: 0; gap: 0; } /* mark only; the word stays for screen readers */
+}

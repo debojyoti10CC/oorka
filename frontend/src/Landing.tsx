@@ -38,7 +38,7 @@ export default function Landing() {
   return (
     <main>
       {/* ---------------------------------------------------------------- hero */}
-      <section className="hero wrap">
+      <section className="hero hero-under-nav wrap">
         <div className="hero-bg" aria-hidden>
           <Dither
             waveColor="#7c3aed"

@@ -78,7 +78,7 @@ function Shell() {
       <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>
         Skip to content
       </a>
-      <nav className="nav" aria-label="Main">
+      <nav className={`nav${route === "home" ? " over" : ""}`} aria-label="Main">
         <div className="nav-inner">
           <a className="brand-link" href="#/">
             <span className="brand-mark" aria-hidden />
