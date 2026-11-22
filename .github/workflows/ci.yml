@@ -41,6 +41,7 @@ jobs:
             contracts/out/PoolSwapTest.sol/PoolSwapTest.json
             contracts/out/PoolModifyLiquidityTest.sol/PoolModifyLiquidityTest.json
             contracts/out/MockERC20.sol/MockERC20.json
+            contracts/out/PoolManager.sol/PoolManager.json
           if-no-files-found: error
 
   frontend:
