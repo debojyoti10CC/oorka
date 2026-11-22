@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HOOK_ABI, IS_WALLET, addressUrl, chain, loadDeployments, publicClient, type Deployments } from "./lib/chain";
 import { fmt, sqrtPriceToPrice } from "./lib/math";
 import { REPO_URL } from "./lib/site";
+import Dither from "./bits/Dither";
 import { Bolt, Coin, Crown, Pin, Ruler, Shield, Spark, Trophy } from "./Stickers";
 
 type Live = { price: number; settle: number; seat: string; left: number; block: bigint; epoch: number };
@@ -80,14 +81,22 @@ export default function Landing() {
     <main>
       {/* ---------------------------------------------------------------- hero */}
       <section className="hero wrap">
-        <a className="pill" href="#/arena">
-          <span className="tag">Live</span> Uniswap v4 hook on {IS_WALLET ? chain.name : "your local chain"} →
-        </a>
-        <Crown size={92} className="float hide-md" style={{ left: "4%", top: 70, transform: "rotate(-12deg)" }} />
-        <Pin size={84} className="float" style={{ right: "6%", top: 90, transform: "rotate(10deg)" }} />
-        <Bolt size={86} className="float hide-md" style={{ left: "2%", top: 330, transform: "rotate(8deg)" }} />
-        <Coin size={80} className="float" style={{ right: "3%", top: 340, transform: "rotate(-8deg)" }} />
-        <Spark size={70} className="float hide-md" style={{ left: "16%", top: 470 }} />
+        <div className="hero-bg" aria-hidden>
+          <Dither
+            waveColor="#7c3aed"
+            backgroundColor="#ffffff"
+            ditherMode="bayer"
+            colorNum={4}
+            pixelSize={3}
+            waveSpeed={0.035}
+            waveFrequency={3}
+            waveAmplitude={0.16}
+            mouseEffect="erase"
+            mouseRadius={0.3}
+            scale={0.3}
+          />
+          <div className="hero-veil" />
+        </div>
         <h1 className="display">
           The curator seat <Crown size={64} className="inline-sticker" /> is <em>earned</em>, on-chain.
         </h1>

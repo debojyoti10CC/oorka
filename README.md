@@ -182,6 +182,7 @@ Oorka's hook, vault, scoring, benchmark, settlement price and keeper logic were 
 - **solmate**: `ERC20` (vault shares) and `MockERC20` (test tokens).
 - **Reactive Network** [reactive-lib](https://github.com/Reactive-Network/reactive-lib): `AbstractPausableReactive` and `AbstractCallback`. The CRON subscription pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
 - **Foundry** (forge, anvil), and **viem** + **React** + **Vite** for the dashboard.
+- **React Bits** [`<Dither />`](https://reactbits.dev): the animated hero background (`frontend/src/bits/Dither.jsx`), used unmodified.
 
 ## Architecture
 
