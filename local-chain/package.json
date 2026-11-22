@@ -1,0 +1,11 @@
+{
+  "name": "oorka-local-chain",
+  "private": true,
+  "description": "Local devnet for Oorka on a Hardhat node (same dev accounts as anvil). For machines where Foundry can't run.",
+  "scripts": {
+    "node": "hardhat node --hostname 127.0.0.1 --port 8545"
+  },
+  "devDependencies": {
+    "hardhat": "2.20.1"
+  }
+}

@@ -99,7 +99,8 @@ export const publicClient = createPublicClient({
 });
 /** How often the dashboard re-reads chain state. Public testnet RPCs rate-limit, anvil doesn't. */
 export const REFRESH_MS = IS_WALLET ? 6000 : 2500;
-export const testClient = createTestClient({ chain: foundry, mode: "anvil", transport });
+// local devnet flavour: anvil (`./demo.sh`) or a Hardhat node (`local-chain/`), which name their mining RPCs differently
+export const testClient = createTestClient({ chain: foundry, mode: ENV.VITE_DEVNET === "hardhat" ? "hardhat" : "anvil", transport });
 
 const localWallets = new Map<number, ReturnType<typeof createWalletClient>>();
 function localWallet(slot: number) {

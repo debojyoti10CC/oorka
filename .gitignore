@@ -8,3 +8,6 @@ contracts/deployments/*.json
 !contracts/deployments/.gitkeep
 frontend/public/deployments.json
 frontend/*.tsbuildinfo
+local-chain/node_modules/
+local-chain/cache/
+local-chain/artifacts/
