@@ -202,7 +202,7 @@ export default function Landing() {
         <div className="eyebrow">By the numbers</div>
         <div className="stats">
           <div className="stat">
-            <div className="big accent">42</div>
+            <div className="big accent">46</div>
             <p>Foundry tests passing in CI, from probe accounting to takeover via the Reactive keeper.</p>
           </div>
           <div className="stat">

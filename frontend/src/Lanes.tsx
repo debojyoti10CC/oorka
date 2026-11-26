@@ -28,7 +28,7 @@ type Props = {
   vault: { lower: number; upper: number; liquidity: bigint } | null;
 };
 
-const ROW = 46;
+const ROW = 38;
 const GUTTER_L = 168;
 const GUTTER_R = 120;
 const W = 1040;

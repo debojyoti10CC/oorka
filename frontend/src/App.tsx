@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { maxUint256, type Address } from "viem";
+import { decodeEventLog, maxUint256, type Address, type Hex } from "viem";
 import {
   ACTORS,
   ERC20_ABI,
@@ -34,9 +34,9 @@ import { useWallet } from "./lib/wallet";
 
 export type View = "arena" | "vault" | "curate";
 const TITLES: Record<View, [string, string]> = {
-  arena: ["Arena", "Every curator's range, scored live. The vault follows the winner."],
-  vault: ["Vault", "Deposit once. Whoever holds the seat manages it, and must beat the benchmark to get paid."],
-  curate: ["Curate", "Declare a range, post a bond, and prove it on real swaps before you touch anyone's money."],
+  arena: ["Arena", "Every range scored on real swaps. The vault follows the winner."],
+  vault: ["Vault", "Deposit once. The seat holder manages it."],
+  curate: ["Curate", "Declare a range, post a bond, earn the seat."],
 };
 
 type Config = {
@@ -160,11 +160,19 @@ export default function App({ view = "arena" }: { view?: View }) {
         setEvents(events);
         return;
       }
-      // public RPCs cap getLogs ranges (Unichain Sepolia: 1,000 blocks), so read the recent past in chunks
-      // once, then only the new blocks on each refresh
+      // public RPCs cap getLogs at 1,000 blocks, so the first load reads the history from Blockscout's log API
+      // (one request, no range cap), then each refresh only asks the RPC for the new blocks
       const head = await publicClient.getBlockNumber();
       const STEP = 900n;
-      let from = logCursor.current ?? BigInt(dep.deployBlock ?? Number(head > 5_000n ? head - 5_000n : 0n));
+      if (logCursor.current === null) {
+        const history = await explorerLogs(dep.hook, BigInt(dep.deployBlock ?? 0), head);
+        if (history) {
+          setEvents(history.slice(-200));
+          logCursor.current = head + 1n;
+          return;
+        }
+      }
+      let from = logCursor.current ?? (head > 3_000n ? head - 3_000n : 0n);
       const found: any[] = [];
       while (from <= head) {
         const to = from + STEP > head ? head : from + STEP;
@@ -391,13 +399,9 @@ export default function App({ view = "arena" }: { view?: View }) {
           <p className="tagline">{TITLES[view][1]}</p>
         </div>
         <dl className="vitals">
-          <div>
+          <div title={`Epochs settle at the time-weighted average price, now ${fmt(snap.settlePrice, 2)}.`}>
             <dt>tETH price</dt>
             <dd>{fmt(snap.price, 2)}</dd>
-          </div>
-          <div title="Settlement scores at the epoch's time-weighted average of block-open prices, so a last-second push barely moves it.">
-            <dt>Settles at (epoch avg)</dt>
-            <dd>{fmt(snap.settlePrice, 2)}</dd>
           </div>
           <div>
             <dt>Epoch {snap.epoch.current}</dt>
@@ -424,24 +428,16 @@ export default function App({ view = "arena" }: { view?: View }) {
 
       {view !== "arena" && <Status busy={busy} toast={toast} />}
       {view === "arena" && (
-      <section className="stage">
-        <div className="stage-head">
-          <h2>The lanes</h2>
-          <p className="muted">
-            Every curator's declared range against the live price. A hatched bar is out of range and earning nothing. The
-            outlined bar holds the seat, and the vault's real liquidity sits on the top lane.
-          </p>
-        </div>
+      <section className="panel arena-card">
         <Lanes curators={snap.curators} price={snap.price} vault={snap.vault} />
         <div className="controls">
           <div className="control-group">
-            <span className="group-label">1. Move the market</span>
+            <span className="group-label">Market</span>
             <button aria-busy={busy === "Trading in a range"} disabled={!!busy || noSigner} onClick={() => simulateMarket("range")}>Trade in a range</button>
-            <button aria-busy={busy === "Pumping"} disabled={!!busy || noSigner} onClick={() => simulateMarket("up")}>Pump tETH</button>
-            <button aria-busy={busy === "Dumping"} disabled={!!busy || noSigner} onClick={() => simulateMarket("down")}>Dump tETH</button>
+            <button aria-busy={busy === "Pumping"} disabled={!!busy || noSigner} onClick={() => simulateMarket("up")}>Pump</button>
+            <button aria-busy={busy === "Dumping"} disabled={!!busy || noSigner} onClick={() => simulateMarket("down")}>Dump</button>
           </div>
           <div className="control-group">
-            <span className="group-label">2. Close the epoch</span>
             {!IS_WALLET && (
               <button aria-busy={busy === "Skipping time"} disabled={!!busy} onClick={skipToEpochEnd}>Skip to epoch end</button>
             )}
@@ -449,17 +445,13 @@ export default function App({ view = "arena" }: { view?: View }) {
               Settle epoch {snap.epoch.current}
             </button>
           </div>
-          {IS_WALLET && dep.reactive && (
-            <p className="muted small keeper-note">
-              No keeper bot: a Reactive Network CRON contract on Lasna (
-              <code>{dep.reactive.contract.slice(0, 8)}…</code>) calls{" "}
-              <a href={addressUrl(dep.keeper ?? "")} target="_blank" rel="noreferrer">
-                OorkaKeeper
-              </a>{" "}
-              about every 17 minutes, which settles ended epochs on its own. Anyone can also settle by hand.
-            </p>
-          )}
         </div>
+        {IS_WALLET && dep.reactive && (
+          <p className="muted small keeper-note">
+            Settled automatically by{" "}
+            <a href={addressUrl(dep.keeper ?? "")} target="_blank" rel="noreferrer">a Reactive Network keeper</a>, no bot.
+          </p>
+        )}
         <Status busy={busy} toast={toast} />
       </section>
       )}
@@ -468,12 +460,12 @@ export default function App({ view = "arena" }: { view?: View }) {
         <div className="col">
         {view !== "vault" && (
         <section className="panel standings">
-          <h2>Standings</h2>
-          <p className="muted small">
-            Paper portfolios start at 1,000 tUSD. A challenger needs to beat the seat holder by {snap.config.marginBps / 100}% for{" "}
-            {snap.config.winStreak} epochs in a row. Changing range costs {snap.config.switchCostBps / 100}%. The seat
-            earns {snap.config.perfFeeBps / 100}% of vault gains above the benchmark and its high-water mark.
-          </p>
+          <div className="panel-head">
+            <h2>Standings</h2>
+            <span className="muted small">
+              Beat the seat by {snap.config.marginBps / 100}% for {snap.config.winStreak} epochs to take it
+            </span>
+          </div>
           <table>
             <thead>
               <tr>
@@ -585,20 +577,10 @@ export default function App({ view = "arena" }: { view?: View }) {
       </div>
 
       <footer className="foot muted small">
-        {IS_WALLET ? (
-          <>
-            Live on {chain.name}. Hook at{" "}
-            <a href={addressUrl(dep.hook)} target="_blank" rel="noreferrer">
-              <code>{dep.hook}</code>
-            </a>
-            . Test tokens are free to mint from the app.{" "}
-          </>
-        ) : (
-          <>
-            Local demo on anvil. Hook at <code>{dep.hook}</code>.{" "}
-          </>
-        )}
-        Each curator's range carries a dust probe position so the PoolManager tracks fee growth at those exact ticks.
+        {IS_WALLET ? "Live on " + chain.name + " · " : "Local chain · "}
+        <a href={addressUrl(dep.hook) || undefined} target="_blank" rel="noreferrer">
+          hook <code>{dep.hook.slice(0, 6)}…{dep.hook.slice(-4)}</code>
+        </a>
       </footer>
     </div>
   );
@@ -636,6 +618,8 @@ export default function App({ view = "arena" }: { view?: View }) {
           text: `Epoch ${a.epoch} report: vault ${fmtPct(v, 3)} vs benchmark ${fmtPct(bm, 3)}.`,
         };
       }
+      case "VaultMoveDeferred":
+        return { key, block, text: `Price was being pushed at settlement, so the vault waits a block before following ${name(a.incumbentId)}.` };
       case "CuratorExited":
         return { key, block, text: `${name(a.id)} left the arena.` };
       case "Deposited":
@@ -649,6 +633,34 @@ export default function App({ view = "arena" }: { view?: View }) {
 }
 
 // ---------------------------------------------------------------------- pieces
+const LOG_API: Record<number, string> = { 1301: "https://unichain-sepolia.blockscout.com/api" };
+
+/** The hook's events from an explorer log API, decoded like viem's getContractEvents. Null if unavailable. */
+async function explorerLogs(address: Address, deployBlock: bigint, head: bigint): Promise<any[] | null> {
+  const api = LOG_API[chain.id];
+  if (!api) return null;
+  // the last ~2 days is plenty for the record panel, and keeps the response under the API's 1,000-log page
+  const from = head > 150_000n && head - 150_000n > deployBlock ? head - 150_000n : deployBlock;
+  try {
+    const res = await fetch(`${api}?module=logs&action=getLogs&address=${address}&fromBlock=${from}&toBlock=${head}`);
+    const body = await res.json();
+    if (!Array.isArray(body.result)) return body.message === "No logs found" ? [] : null;
+    const out: any[] = [];
+    for (const l of body.result) {
+      try {
+        const topics = (l.topics as (string | null)[]).filter(Boolean) as [Hex, ...Hex[]];
+        const ev = decodeEventLog({ abi: HOOK_ABI, data: l.data as Hex, topics });
+        out.push({ ...ev, blockNumber: BigInt(l.blockNumber), transactionHash: l.transactionHash, logIndex: Number(l.logIndex) });
+      } catch {
+        /* not one of ours (e.g. ERC-20 Transfer of vault shares) */
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 function mmss(s: number) {
   const m = Math.floor(s / 60);
   const r = s % 60;
@@ -700,10 +712,7 @@ function BenchCompare({ bench, name }: { bench: Snapshot["bench"]; name: string 
           })}
         </tbody>
       </table>
-      <p className="muted small">
-        {name}: the same 1,000 tUSD paper portfolio as the curators, parked on a fixed wide range. If the contested seat
-        isn't beating it, depositors would be better off passive.
-      </p>
+      <p className="muted small">{name}: a passive wide range that never moves.</p>
     </div>
   );
 }
@@ -782,10 +791,7 @@ function RegisterForm({
         onRegister(name, lo, hi, bond);
       }}
     >
-      <p className="muted small">
-        Pick a range. A dust-sized probe position goes there so the pool tracks fees for those exact ticks. Your score is
-        what that range would have earned on 1,000 tUSD, with no capital at risk beyond the bond.
-      </p>
+      <p className="muted small">Scored on what your range would earn on 1,000 tUSD. Only the bond is at risk.</p>
       <label>
         Curator name
         <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
@@ -837,8 +843,7 @@ function RangeEditor({
         <strong>{c.name}</strong> {c.incumbent ? "holds the seat. Moving your range moves the vault." : "is challenging."}
       </p>
       <p className="muted small">
-        Now at {fmt(tickToPrice(c.lower), 0)} to {fmt(tickToPrice(c.upper), 0)}. Recentering around the current price costs
-        the switch fee on your paper portfolio.
+        Now at {fmt(tickToPrice(c.lower), 0)} to {fmt(tickToPrice(c.upper), 0)}. Moving costs the switch fee.
       </p>
       <label>
         New width: ±{width}% around {fmt(price, 0)}

@@ -658,3 +658,18 @@ html, body { overflow-x: clip; }
 /* inside the pill nav, controls follow the pill's curve */
 .nav.over .wallet, .nav.over .net-tag { border-radius: var(--radius-pill); }
 
+
+/* ---------- app pages: compact */
+.app { padding-top: 24px; }
+.app .top { padding-bottom: 16px; }
+.app .wordmark { font-size: 2rem; }
+.app .tagline { margin-top: 4px; font-size: 0.95rem; }
+.app .vitals dd { font-size: 1.1rem; }
+.arena-card { padding: 16px; margin-bottom: 16px; }
+.arena-card .lanes { border: 0; box-shadow: none; background: transparent; }
+.arena-card .controls { margin-top: 8px; justify-content: space-between; align-items: center; gap: 12px; }
+.arena-card .keeper-note { margin: 8px 0 0; }
+.panel { padding: 20px; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.panel-head h2 { margin: 0; }
+.foot { margin-top: 20px; }

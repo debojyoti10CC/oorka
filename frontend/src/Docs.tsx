@@ -168,6 +168,14 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
               <td>Spam the leaderboard</td>
               <td>A bond is required, and there are at most 8 curators</td>
             </tr>
+            <tr>
+              <td>Push the price, then call the permissionless settle so a takeover rebalances into your sandwich</td>
+              <td>The seat changes, but the vault only moves at an honest price. Otherwise the move waits for the next settle or <code>compound()</code></td>
+            </tr>
+            <tr>
+              <td>Register and exit until settling runs out of gas</td>
+              <td>Exited slots are reused, so at most 8 curators plus the benchmark are ever scored</td>
+            </tr>
           </tbody>
         </table>
 
@@ -197,7 +205,7 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
           <code>{`contracts/src/OorkaHook.sol              hook + vault (ERC-20 shares) + curator registry
 contracts/src/reactive/OorkaReactive.sol CRON subscriber on Reactive Network
 contracts/src/reactive/OorkaKeeper.sol   callback contract that settles epochs
-contracts/test/                          42 Foundry tests`}</code>
+contracts/test/                          46 Foundry tests + 5 invariants`}</code>
         </pre>
 
         <h2 id="run">Run it</h2>
