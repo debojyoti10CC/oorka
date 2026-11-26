@@ -18,5 +18,13 @@ remappings = [
   "@openzeppelin/=lib/v4-periphery/lib/v4-core/lib/openzeppelin-contracts/",
 ]
 
+[fuzz]
+runs = 256
+
+[invariant]
+runs = 32
+depth = 60
+fail_on_revert = false
+
 [lint]
 lint_on_build = false

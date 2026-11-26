@@ -518,4 +518,91 @@ contract OorkaHookTest is Test, Deployers {
         vm.expectRevert(OorkaHook.BadRange.selector);
         hook.register("x", 10, 600, 100e18); // not a multiple of tickSpacing
     }
+
+    // ---------------- hardening ----------------
+    function test_registerExitChurnReusesSlots() public {
+        _registerBase();
+        // a griefer cycling register/exit must not grow the array that settleEpoch loops over
+        for (uint256 i; i < 25; ++i) {
+            vm.startPrank(carol);
+            uint256 id = hook.register("churn", -1200, 1200, 100e18);
+            hook.exit(id);
+            vm.stopPrank();
+        }
+        assertEq(hook.curatorCount(), 3, "one reused slot, not 25 new ones");
+        vm.prank(carol);
+        uint256 again = hook.register("Mid Carol", -1200, 1200, 100e18);
+        assertEq(again, 2, "the freed slot is reused");
+        OorkaHook.CuratorView[] memory cs = hook.getCurators();
+        assertEq(cs[2].name, "Mid Carol");
+        assertEq(cs[2].streak, 0);
+        assertEq(cs[2].bond, 100e18);
+    }
+
+    function test_takeoverWaitsOutAPricePush() public {
+        (, uint256 chal) = _registerBase();
+        vm.prank(dave);
+        hook.deposit(10_000e18, 10_000e18, 0);
+        for (uint256 i; i < 2; ++i) {
+            _trade(20, 50e18);
+            _nextEpoch();
+        }
+        _trade(20, 50e18);
+        (,, uint256 end,) = hook.epochInfo();
+        vm.warp(end);
+        vm.roll(vm.getBlockNumber() + 1);
+        // sandwich setup: open the block, then shove the price far from the block-open reference
+        swap(key, true, -int256(1e18), ZERO_BYTES);
+        swap(key, true, -int256(3_000e18), ZERO_BYTES);
+
+        vm.expectEmit(true, false, false, false, address(hook));
+        emit OorkaHook.VaultMoveDeferred(chal);
+        hook.settleEpoch();
+        assertEq(hook.incumbentId(), chal, "the seat still changes hands");
+        assertEq(hook.vaultLower(), WIDE_L, "but the vault does not rebalance into the pushed price");
+
+        // next block, price is honest again relative to its own open: anyone can finish the move
+        vm.roll(vm.getBlockNumber() + 1);
+        hook.compound();
+        assertEq(hook.vaultLower(), TIGHT_L);
+        assertEq(hook.vaultUpper(), TIGHT_U);
+        assertGt(hook.vaultLiquidity(), 0);
+    }
+
+    function testFuzz_depositWithdrawNeverCreatesValue(uint256 a0, uint256 a1) public {
+        _registerBase();
+        a0 = bound(a0, 1e15, 100_000e18);
+        a1 = bound(a1, 1e15, 100_000e18);
+        uint256 b0 = currency0.balanceOf(dave);
+        uint256 b1 = currency1.balanceOf(dave);
+        vm.startPrank(dave);
+        uint256 shares;
+        try hook.deposit(a0, a1, 0) returns (uint256 s_) {
+            shares = s_;
+        } catch {
+            vm.stopPrank();
+            return; // too small to mint liquidity at this range: nothing to check
+        }
+        hook.withdraw(shares, 0, 0);
+        vm.stopPrank();
+        // the round trip can only lose rounding dust, never gain
+        assertLe(currency0.balanceOf(dave), b0);
+        assertLe(currency1.balanceOf(dave), b1);
+        assertApproxEqAbs(currency0.balanceOf(dave), b0, 1e6);
+        assertApproxEqAbs(currency1.balanceOf(dave), b1, 1e6);
+    }
+
+    function testFuzz_rangeRulesHold(int24 lower, int24 upper) public {
+        lower = int24(bound(lower, -900_000, 900_000));
+        upper = int24(bound(upper, -900_000, 900_000));
+        bool ok = lower < upper && lower % 60 == 0 && upper % 60 == 0 && lower >= TickMath.minUsableTick(60)
+            && upper <= TickMath.maxUsableTick(60);
+        vm.prank(alice);
+        try hook.register("fuzz", lower, upper, 100e18) {
+            assertTrue(ok);
+        } catch (bytes memory err) {
+            // a legal but extreme range can still fail to price a paper portfolio; it must fail as BadRange
+            assertEq(bytes4(err), OorkaHook.BadRange.selector);
+        }
+    }
 }

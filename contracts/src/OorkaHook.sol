@@ -70,6 +70,9 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     event BenchmarkScored(uint256 indexed epoch, uint256 vaultGrowthWad, uint256 benchmarkGrowthWad);
     /// @notice The seat holder was paid vault shares for beating both the benchmark and the high-water mark.
     event PerformanceFee(uint256 indexed epoch, uint256 indexed curatorId, address indexed to, uint256 shares, uint256 value);
+    /// @notice The vault couldn't follow the seat holder because the price was being pushed in this block. The next
+    /// settlement or `compound()` retries the move.
+    event VaultMoveDeferred(uint256 indexed incumbentId);
 
     // ------------------------------------------------------------------
     // Config
@@ -251,8 +254,7 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
 
         IERC20Minimal(Currency.unwrap(poolKey.currency1)).transferFrom(msg.sender, address(this), bond);
 
-        id = curators.length;
-        curators.push();
+        id = _freeSlot();
         Curator storage c = curators[id];
         c.owner = msg.sender;
         c.name = name;
@@ -413,9 +415,10 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
             }
             incumbentId = bestId;
             emit Takeover(epoch, incId, bestId, slash);
-            Curator storage nw = curators[bestId];
-            _moveVault(nw.lower, nw.upper);
         }
+        // the vault follows the seat holder, unless the price is being pushed right now (a sandwich around a
+        // permissionless settle); then the move waits for the next settlement or compound()
+        _syncVault();
 
         // roll the epoch: every portfolio's current NAV becomes the new baseline
         for (uint256 i; i < n; ++i) {
@@ -437,7 +440,8 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     function compound() external poolReady {
         if (!hasIncumbent) revert NoIncumbent();
         _checkDeviation();
-        _moveVault(vaultLower, vaultUpper);
+        Curator storage inc = curators[incumbentId];
+        _moveVault(inc.lower, inc.upper);
     }
 
     // ------------------------------------------------------------------
@@ -917,10 +921,40 @@ contract OorkaHook is IHooks, IUnlockCallback, ERC20 {
     }
 
     function _checkDeviation() internal view {
+        if (!_deviationOk()) revert PriceDeviation();
+    }
+
+    /// @dev spot price within `maxTickDeviation` of the block-open reference price
+    function _deviationOk() internal view returns (bool) {
         (, int24 spotTick,,) = poolManager.getSlot0(poolId);
         int24 refTick = TickMath.getTickAtSqrtPrice(refSqrtPrice());
         int24 diff = spotTick > refTick ? spotTick - refTick : refTick - spotTick;
-        if (diff > config.maxTickDeviation) revert PriceDeviation();
+        return diff <= config.maxTickDeviation;
+    }
+
+    function _syncVault() internal {
+        Curator storage inc = curators[incumbentId];
+        if (vaultLower == inc.lower && vaultUpper == inc.upper) return;
+        if (!_deviationOk()) {
+            emit VaultMoveDeferred(incumbentId);
+            return;
+        }
+        _moveVault(inc.lower, inc.upper);
+    }
+
+    /// @dev Reuse an exited curator's slot before growing the array, so register/exit churn can't make
+    /// `settleEpoch()` (which loops over every slot) arbitrarily expensive. The array never exceeds
+    /// MAX_CURATORS + 1 entries (curators plus the benchmark).
+    function _freeSlot() internal returns (uint256 id) {
+        uint256 n = curators.length;
+        for (; id < n; ++id) {
+            Curator storage s = curators[id];
+            if (!s.active && !s.benchmark) {
+                delete curators[id];
+                return id;
+            }
+        }
+        curators.push();
     }
 
     function _activeCount() internal view returns (uint256 k) {
