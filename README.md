@@ -38,20 +38,19 @@ Curated LP vaults ask depositors to trust a manager. You pick one on marketing, 
 The seat holder is scored exactly like everyone else, so the race is apples to apples. Nobody runs it: a **Reactive Network** CRON contract settles every epoch on its own.
 
 ```mermaid
-flowchart LR
-    A["Challenger<br/>posts bond + range"] --> B["Hook adds 1e9 probe<br/>at those ticks"]
-    B --> C["Swaps hit the pool<br/>v4 tracks feeGrowthInside"]
-    C --> D{"Epoch ends<br/>settleEpoch()"}
-    D --> E["Mark every paper NAV<br/>at the epoch TWAP"]
-    E --> F{"Beat seat holder<br/>by marginBps?"}
+flowchart TB
+    A["Challenger posts bond + range"] --> B["Hook adds a 1e9 probe at those ticks"]
+    B --> C["Swaps hit the pool · v4 tracks feeGrowthInside"]
+    C --> D["Epoch ends · Reactive keeper calls settleEpoch()"]
+    D --> E["Every paper NAV marked at the epoch TWAP"]
+    E --> F{"Beat the seat holder by marginBps?"}
     F -- "no" --> G["Streak resets"]
-    F -- "yes" --> H{"winStreak<br/>reached?"}
+    F -- "yes" --> H{"winStreak reached?"}
     H -- "not yet" --> I["Streak +1"]
-    H -- "yes" --> J["Takeover<br/>slash old bond to depositors"]
-    J --> K["Vault liquidity moves<br/>to the winner's range"]
-    G --> C
-    I --> C
-    K --> C
+    H -- "yes" --> J["Takeover · old bond slashed to depositors"]
+    J --> K["Vault liquidity moves to the winner's range"]
+    G -. next epoch .-> C
+    I -. next epoch .-> C
 
     classDef hook fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b
     classDef win fill:#dcfce7,stroke:#15803d,color:#14532d
@@ -351,25 +350,20 @@ forge script script/DeployTestnet.s.sol --rpc-url https://sepolia.unichain.org -
 **What to try:** hit **Trade in a range** a few times and the tight curator out-earns the wide one on fees. Settle a few epochs and watch the seat change hands and the vault bar slide to the new range. Then **Pump**: the price leaves the tight range, its lane goes hatched, and the wide range leads. The market decides who should manage; the hook works it out alone.
 
 ```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> Ranging: price near 3,000
-    Ranging --> Ranging: Trade in a range
-    Ranging --> TightLeads: tight range earns most fees
-    TightLeads --> TightSeat: 2 winning epochs
-    TightSeat --> Trending: Pump or Dump
-    Trending --> WideLeads: price leaves the tight range
-    WideLeads --> WideSeat: 2 winning epochs
-    WideSeat --> Ranging: price settles back
+flowchart TB
+    R["Ranging market<br/>price chops near 3,000"] -- "tight range earns the most fees" --> T["Tight Tony leads"]
+    T -- "2 winning epochs" --> TS["Tight Tony takes the seat<br/>vault moves to his range, old bond slashed"]
+    TS -- "Pump or Dump" --> X["Trending market<br/>price leaves the tight range, lane goes hatched"]
+    X -- "wide range keeps earning" --> W["Wide range leads"]
+    W -- "2 winning epochs" --> WS["Wide range takes the seat back<br/>no vote, the hook decides"]
+    WS -. "price settles" .-> R
 
-    note right of TightSeat
-        vault moves to the tight range
-        old seat holder slashed
-    end note
-    note right of WideSeat
-        no vote: the hook
-        hands the seat back
-    end note
+    classDef calm fill:#ecfdf5,stroke:#15803d,color:#14532d
+    classDef trend fill:#fff7ed,stroke:#c2780f,color:#431407
+    classDef seat fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b
+    class R,T calm
+    class X,W trend
+    class TS,WS seat
 ```
 
 ---
