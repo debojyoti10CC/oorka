@@ -1,0 +1,36 @@
+name: Paper
+
+# Compiles whitepaper/oorka-whitepaper.tex and commits the PDF next to it whenever the source changes.
+on:
+  push:
+    branches: [main]
+    paths: ["whitepaper/*.tex", ".github/workflows/paper.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: xu-cheng/latex-action@v3
+        with:
+          root_file: oorka-whitepaper.tex
+          working_directory: whitepaper
+          latexmk_use_lualatex: false
+      - name: Commit the PDF
+        run: |
+          git config user.name "oorka-paper-bot"
+          git config user.email "oorka-paper-bot@users.noreply.github.com"
+          git add -f whitepaper/oorka-whitepaper.pdf
+          git diff --cached --quiet && exit 0
+          git commit -m "paper: rebuild oorka-whitepaper.pdf"
+          git pull --rebase origin main
+          git push origin HEAD:main
