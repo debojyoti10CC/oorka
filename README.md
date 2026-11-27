@@ -1,87 +1,113 @@
+<div align="center">
+
+<a href="https://debojyoti10cc.github.io/oorka/"><img src="docs/readme/hero.jpg" alt="Oorka: the curator seat is earned, on-chain." width="100%"></a>
+
 # Oorka
 
-**A Uniswap v4 hook where the right to manage a vault's liquidity is contested on-chain.**
+**Curators compete on real fees. The winner runs the vault. No vote, no trust.**
 
-Anyone can challenge the vault's curator. Challengers don't need capital to prove themselves: the hook drops a dust-sized "probe" position at their declared range. That makes the PoolManager track fee growth at those exact ticks, so the hook can compute what the range *would have* earned with real swap data. A challenger who beats the seat holder for enough epochs in a row takes over, and the vault's real liquidity moves to their range automatically.
+A Uniswap v4 hook where the right to manage a vault's liquidity is won, and kept, on measured performance.
 
-Built for the UHI11 Hookathon theme, **Active Management & Curation**. It hits three of the four listed directions in one system: curated LP networks, backtesting (forward-testing, really), and strategy migration.
+[![CI](https://github.com/debojyoti10CC/oorka/actions/workflows/ci.yml/badge.svg)](https://github.com/debojyoti10CC/oorka/actions/workflows/ci.yml)
+[![Demo market](https://github.com/debojyoti10CC/oorka/actions/workflows/market.yml/badge.svg)](https://github.com/debojyoti10CC/oorka/actions/workflows/market.yml)
+![Uniswap v4](https://img.shields.io/badge/Uniswap-v4%20hook-ff007a)
+![Unichain Sepolia](https://img.shields.io/badge/live%20on-Unichain%20Sepolia-7c3aed)
+![Reactive Network](https://img.shields.io/badge/keeper-Reactive%20Network-171717)
+![Tests](https://img.shields.io/badge/tests-46%20%2B%205%20invariants-15803d)
 
-![Takeover](docs/takeover.png)
+[**Live app**](https://debojyoti10cc.github.io/oorka/) · [**Arena**](https://debojyoti10cc.github.io/oorka/#/arena) · [**Docs**](https://debojyoti10cc.github.io/oorka/#/docs) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
 
-## Live deployment (Unichain Sepolia + Reactive Lasna)
+<sub>UHI11 Hookathon · Active Management & Curated Liquidity</sub>
 
-| Contract | Address |
-|---|---|
-| OorkaHook (hook + vault + curator registry) | [`0xbeEcbe71d831880f2038Bc35b613e100F1f010A0`](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) |
-| OorkaKeeper (Reactive callback, settles epochs) | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
-| OorkaReactive (CRON subscriber, on Reactive Lasna) | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
-| Uniswap v4 PoolManager (Unichain Sepolia) | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
-| tETH / tUSD test tokens | [`0x64A3…10e6`](https://sepolia.uniscan.xyz/address/0x64A3C35b31f04e3c92a45E9d003468e4574810e6) / [`0xaCB1…Ac5C`](https://sepolia.uniscan.xyz/address/0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C) |
-
-The pool is tETH/tUSD at about 3,000. It is seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit. Epochs last 15 minutes, and the Reactive CRON contract (Cron1000) pokes the keeper about every 17 minutes, so an ended epoch settles within one tick. To give the arena real swaps to score, a scheduled GitHub Action ([`market.yml`](.github/workflows/market.yml)) trades in the pool every 15 minutes, walking the price through slow waves with a throwaway testnet key. It never settles anything: settlement is the Reactive keeper's job alone. All addresses are in [`frontend/public/deployments.1301.json`](frontend/public/deployments.1301.json).
-
-Run the dashboard against it with any browser wallet. Test tokens are minted from the app.
-
-```bash
-cd frontend && npm install && npx vite --mode unichain
-```
+</div>
 
 ---
 
 ## The problem
 
-Curated LP vaults ask depositors to trust a manager. Today you pick one based on their marketing, or a backtest they ran themselves on data they chose. Nothing on-chain says "this manager is actually better than the alternatives right now", and nothing replaces a bad manager without governance drama.
+Curated LP vaults ask depositors to trust a manager. You pick one on marketing, or on a backtest they ran themselves over data they chose. Nothing on-chain says *"this manager is actually better than the alternatives right now"*, and nothing replaces a bad one without governance drama.
 
-## The idea
+## How it works
 
-Make the curator seat a competition that settles itself:
+<img src="docs/readme/steps.png" alt="01 Declare · 02 Score · 03 Take over" width="100%">
 
-1. **The seat holder** runs the vault. Their range is where depositors' liquidity actually sits.
-2. **Challengers** post a bond and declare a range. They get a **paper portfolio** of 1,000 tUSD notional at that range.
-3. **The probe trick.** v4 only tracks `feeGrowthInside` for ticks that have liquidity. So the hook adds `1e9` units of dust liquidity at every declared range. Now `StateLibrary.getFeeGrowthInside` returns real fee growth for that range, and the hook can credit each paper portfolio exactly what that range earned per unit of liquidity, plus the real price exposure of holding it. No oracle, no off-chain backtest, no trust.
-4. **Epochs.** At each epoch end anyone can call `settleEpoch()`. Every paper portfolio is marked to market. A challenger whose epoch return beats the seat holder's by `marginBps` gets a win. `winStreak` wins in a row and they take the seat.
-5. **Migration.** On takeover, the hook pulls the vault's liquidity and redeploys it at the winner's range in the same transaction. The old seat holder loses `slashBps` of their bond, which goes straight to depositors.
+1. **Declare.** A challenger posts a bond and names a range. The hook adds a **dust probe** (`1e9` liquidity) at those ticks. v4 only tracks `feeGrowthInside` for initialised ticks, so now the PoolManager itself measures what that range earns, swap by swap.
+2. **Score.** Every curator gets a **paper portfolio** of 1,000 tUSD of virtual liquidity at their range: real fees from the probe, plus real price exposure. At each epoch end the portfolios are marked at the epoch's **time-weighted** price and compared with each other and with a passive **benchmark**.
+3. **Take over.** Beat the seat holder by `marginBps` for `winStreak` epochs in a row and the vault's **real** liquidity moves to your range in the same transaction. The old seat holder's bond is slashed to depositors.
 
-The seat holder is scored the same way as everyone else (its own paper portfolio), so the race is apples to apples.
+The seat holder is scored exactly like everyone else, so the race is apples to apples. Nobody runs it: a **Reactive Network** CRON contract settles every epoch on its own.
+
+## Why Oorka
+
+<img src="docs/readme/bento.jpg" alt="What's in the hook, performance fee, defences, proof, takeover" width="100%">
+
+<img src="docs/readme/stats.png" alt="46 tests · 0 oracles or admin keys · 1e9 probe liquidity · 10% fee above benchmark" width="100%">
+
+<img src="docs/readme/compare.png" alt="Typical vault manager vs auction-managed AMM vs Oorka" width="100%">
+
+---
+
+## Live on testnet
+
+<table>
+<tr>
+<td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/arena"><img src="docs/readme/arena.png" alt="Arena"></a><p align="center"><b>Arena</b>: lanes, standings, the on-chain record</p></td>
+<td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/vault"><img src="docs/readme/vault.png" alt="Vault"></a><p align="center"><b>Vault</b>: deposit, withdraw, vault vs benchmark</p></td>
+</tr>
+</table>
+
+| Contract | Chain | Address |
+|---|---|---|
+| **OorkaHook** (hook + vault + curator registry) | Unichain Sepolia | [`0xbeEcbe71d831880f2038Bc35b613e100F1f010A0`](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) |
+| **OorkaKeeper** (Reactive callback, settles epochs) | Unichain Sepolia | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
+| **OorkaReactive** (CRON subscriber) | Reactive Lasna | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
+| Uniswap v4 PoolManager | Unichain Sepolia | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
+| tETH / tUSD test tokens | Unichain Sepolia | [`0x64A3…10e6`](https://sepolia.uniscan.xyz/address/0x64A3C35b31f04e3c92a45E9d003468e4574810e6) / [`0xaCB1…Ac5C`](https://sepolia.uniscan.xyz/address/0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C) |
+
+- **The pool** is tETH/tUSD at about 3,000, seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit.
+- **Epochs** last 15 minutes. The Reactive CRON contract (Cron1000) pokes the keeper about every 17 minutes, so every ended epoch settles within one tick, with nobody clicking anything.
+- **A demo market** ([`market.yml`](.github/workflows/market.yml)) trades in the pool four times an hour with a throwaway key, walking the price through slow waves so tight and wide ranges take turns winning. It never settles: that is the keeper's job alone.
+- Connect any browser wallet on the [live app](https://debojyoti10cc.github.io/oorka/). Test tokens are minted from the app. All addresses live in [`deployments.1301.json`](frontend/public/deployments.1301.json).
+
+---
 
 ## Why it's hard to game
 
 | Attack | Defense |
 |---|---|
-| Flash-swap the price to inflate your paper NAV right before settling | All accounting uses the **block-open price**, snapshotted in `beforeSwap` on the first swap of each block. An in-block price push doesn't move it. |
-| Sandwich your own vault while rebalancing, or deposit/withdraw at a pushed price | Vault-moving actions revert if spot is more than `maxTickDeviation` ticks from the block-open price. |
-| Push the price, then call the permissionless `settleEpoch()` so a takeover migrates the vault into your sandwich | Settlement still changes the seat, but the vault only moves if spot is within `maxTickDeviation` of the block-open price. Otherwise it emits `VaultMoveDeferred`, and the next settlement or `compound()` finishes the move at an honest price. |
-| Register and exit over and over until `settleEpoch()` runs out of gas | Exited slots are reused, so the curator array never holds more than 8 curators plus the benchmark. An invariant checks it. |
-| Declare a range after you've seen where the price went | Ranges only accrue from the moment they're declared. There's no way to backdate one. |
-| Flip ranges every block to chase fees | Every range change charges `switchCostBps` on the paper portfolio, a proxy for real swap costs. |
+| Flash-swap the price to inflate your paper NAV right before settling | All accounting uses the **block-open price**, snapshotted in `beforeSwap` on the first swap of each block. An in-block push doesn't move it. |
+| Push the price at the end of block N, settle first thing in block N+1 | Settlement scores at the epoch's **time-weighted average of block-open ticks** (`settleSqrtPrice()`), built inside the hook. A push held for seconds barely moves a 15-minute average. |
+| Sandwich the vault while it rebalances, or deposit/withdraw at a pushed price | Vault-moving actions revert if spot is more than `maxTickDeviation` ticks from the block-open price. |
+| Push the price, then call the permissionless `settleEpoch()` so a takeover migrates the vault into your sandwich | The seat still changes hands, but the vault only moves at an honest price. Otherwise it emits `VaultMoveDeferred` and the next settlement or `compound()` finishes the move. |
+| Register and exit over and over until `settleEpoch()` runs out of gas | Exited slots are reused, so the curator array never exceeds 8 curators plus the benchmark. An invariant checks it. |
+| Pump a range's score with `donate()`, which adds fee growth with no swap | The hook claims `beforeDonate` and reverts every donation (`DonationsDisabled`). |
+| Declare a range after seeing where the price went | Ranges accrue only from the moment they're declared. No backdating. |
+| Flip ranges every block to chase fees | Every range change charges `switchCostBps` on the paper portfolio. |
 | Join late in an epoch with a lucky streak | A challenger must be present for the **whole** epoch to be eligible. |
 | Spam the leaderboard | Bond required, max 8 curators. |
 | Carry wins earned against the old seat holder into the new reign | All streaks reset on takeover. |
-| Pump a range's score with `donate()`, which adds fee growth without any swap | The hook claims `beforeDonate` and reverts every donation to its pool (`DonationsDisabled`). |
-| Push the price at the end of block N, then call `settleEpoch()` first thing in block N+1 | Settlement scores at the epoch's **time-weighted average of block-open ticks** (`settleSqrtPrice()`), built inside the hook from `beforeSwap`. A push that held for a few seconds barely moves a 10-minute or 1-hour average. |
 
-Known limitation, said out loud:
-
-- **Wash trading.** A curator could wash-trade to inflate fee growth at their range. Unlike a donation, it costs them the swap fee plus price impact, and the fees go to *real* liquidity in that range. Any range overlapping theirs benefits too. A production version would cap per-epoch fee credit or weight fees by unique swappers.
-
-## What the demo shows
-
-Hit **Trade in a range** a few times and the tight curator out-earns the wide one on fees. Settle three epochs and you'll watch the seat change hands and the vault bar slide to the new range. Then hit **Pump tETH**: the price walks out of the tight range, it goes hatched (earning nothing), and the wide-range curator leads the next epoch. The market regime decides who should manage, and the hook figures it out by itself.
-
-The grey lane is the **benchmark**: the same 1,000 tUSD paper portfolio, parked on a fixed wide range that never moves and can never take the seat. Every settlement emits `BenchmarkScored` with the vault's real return next to the benchmark's, and the Vault panel shows both since the start and for the current epoch. That answers the depositor's question directly: is the contested seat beating doing nothing?
-
-![Pump](docs/pump.png)
+> **Known limitation.** A curator could wash-trade to inflate fee growth at their range. Unlike a donation it costs them the swap fee plus price impact, the fees go to *real* liquidity in that range, and every overlapping range benefits too. A production version would cap per-epoch fee credit or weight fees by unique swappers.
 
 ## Keeper-free settlement (Reactive Network)
 
-`settleEpoch()` is permissionless, but someone still has to call it. `src/reactive/` removes that someone:
+```
+ Reactive Lasna                                   Unichain Sepolia
+┌──────────────────────┐   CRON tick (~17 min)   ┌─────────────────────┐   settleEpoch()   ┌──────────────┐
+│ OorkaReactive        │ ──────────────────────▶ │ OorkaKeeper         │ ────────────────▶ │ OorkaHook    │
+│ react() ← SYSTEM     │  requestCallbackV_1_0   │ onlyProxy +         │  if epoch ended   │ score, seat, │
+│ every N ticks        │                         │ sender == reactive  │  else emit Idle   │ move vault   │
+└──────────────────────┘                         └─────────────────────┘                   └──────────────┘
+```
 
-- **`OorkaReactive`** runs on Reactive Network. It subscribes to one of Reactive's built-in CRON events. The system contract calls its `react()` on every tick, and every `ticksPerPoke` ticks it requests a callback to the hook's chain (`requestCallbackV_1_0`). It is written for Reactive's current contract model, with `react()` called directly by the system contract at `0x8888…8888`, and it has an owner switch to pause and resume the subscription.
-- **`OorkaKeeper`** runs on the hook's chain. It only accepts callbacks from the Reactive callback proxy *and* only when the sender the network injects into the first argument is our own `OorkaReactive` address. If the epoch is over it settles it, otherwise it emits `Idle`. A failed settle is reported (`SettleFailed`) and retried on the next tick, so it can't block the schedule.
+- **`OorkaReactive`** subscribes to Reactive's built-in CRON event. The system contract (`0x8888…8888`) calls `react()` on every tick; every `ticksPerPoke` ticks it requests a callback to the hook's chain. An owner switch pauses and resumes the subscription.
+- **`OorkaKeeper`** only accepts the Reactive callback proxy **and** only when the network-injected sender is our own `OorkaReactive`. Ended epoch → settle; otherwise `Idle`. A failed settle emits `SettleFailed` and retries next tick.
+- The keeper has **no special rights** on the hook. It only adds liveness. A takeover settle uses under 1.5M gas, half the 3M callback budget (checked in the tests).
 
-The keeper has no special rights on the hook. All it adds is liveness: the seat changes hands on time even when nobody is watching. A takeover settle uses under 1.5M gas, half the 3M callback budget (checked in the tests).
+<details>
+<summary><b>Deploy the keeper yourself</b></summary>
 
-Deploy (Unichain Sepolia + Reactive Lasna). The keeper needs the reactive contract's address at construction, so the reactive contract goes first and is pointed at the keeper afterwards with a one-shot `setKeeper`. `frontend/scripts/deploy-reactive.mjs` runs all three steps from the CI artifacts:
+`frontend/scripts/deploy-reactive.mjs` runs all three steps from CI's build artifacts:
 
 ```bash
 cd frontend
@@ -93,18 +119,96 @@ or by hand with Foundry:
 ```bash
 cd contracts
 # 1. reactive contract on Lasna: Cron1000 (~17 min), poke every tick, destination chain 1301
-forge create src/reactive/OorkaReactive.sol:OorkaReactive --broadcast   --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY --value 0.35ether   --constructor-args 0xe20b31294d84c3661ddc8f423abb9c70310d0cf172aa2714ead78029b325e3f4 1301 1
+forge create src/reactive/OorkaReactive.sol:OorkaReactive --broadcast --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY --value 0.35ether \
+  --constructor-args 0xe20b31294d84c3661ddc8f423abb9c70310d0cf172aa2714ead78029b325e3f4 1301 1
 
 # 2. keeper on the hook's chain: Unichain Sepolia's callback proxy, the reactive contract, the hook
-forge create src/reactive/OorkaKeeper.sol:OorkaKeeper --broadcast   --rpc-url https://sepolia.unichain.org --private-key $PRIVATE_KEY --value 0.003ether   --constructor-args 0x775c9B990ADe401060B78D0e98684eEf8d2466C1 $REACTIVE $HOOK false
+forge create src/reactive/OorkaKeeper.sol:OorkaKeeper --broadcast --rpc-url https://sepolia.unichain.org --private-key $PRIVATE_KEY --value 0.003ether \
+  --constructor-args 0x775c9B990ADe401060B78D0e98684eEf8d2466C1 $REACTIVE $HOOK false
 
 # 3. point the reactive contract at the keeper
 cast send $REACTIVE "setKeeper(address)" $KEEPER --rpc-url https://lasna-rpc.rnk.dev/ --private-key $PRIVATE_KEY
 ```
 
-Every CRON tick is billed whether or not anything happens, so pick the longest interval that fits the epoch length, and use `setPaused(true)` to stop it.
+Every CRON tick is billed whether or not anything happens, so pick the longest interval that fits the epoch, and use `setPaused(true)` to stop it. Callback proxies and CRON topics come from the [Reactive docs](https://dev.reactive.network/origins-and-destinations).
 
-Callback proxy addresses and CRON topics come from the [Reactive docs](https://dev.reactive.network/origins-and-destinations). Check them before deploying.
+</details>
+
+---
+
+## Under the hood
+
+**Hook permissions:** `afterInitialize` (bind to one pool), `beforeSwap` (snapshot the block-open price, build the TWAP) and `beforeDonate` (reject donations). The hook never touches swap pricing, so traders pay normal v4 fees.
+
+**Positions inside the PoolManager**, all owned by the hook and separated by salt:
+
+| salt | what |
+|---|---|
+| `bytes32(id)` | curator `id`'s probe, `1e9` liquidity at their declared range |
+| `type(uint256).max` | the vault's real liquidity at the seat holder's range |
+
+**Paper NAV (per curator):**
+
+```
+fees     = (feeGrowthInside_now − feeGrowthInside_last) · vL / 2^128
+position = amounts(vL, range, blockOpenPrice)
+NAV      = value(position + fees + cash, blockOpenPrice)        // in tUSD
+```
+
+`vL` (virtual liquidity) is set so the portfolio is worth exactly its NAV when the range is declared. A range change re-derives `vL` from the current NAV minus the switch cost.
+
+**Performance fee.** The seat holder earns `perfFeeBps` (10%) of vault growth **above the benchmark and the high-water mark**, minted as shares. Nothing for losses; nothing for matching doing nothing.
+
+<details>
+<summary><b>Key functions</b></summary>
+
+| function | who | what |
+|---|---|---|
+| `register(name, lower, upper, bond)` | anyone | enter. The first registrant takes the seat. |
+| `declareRange(id, lower, upper)` | curator | move your range. The seat holder's move also moves the vault. |
+| `settleEpoch()` | anyone (the keeper) | score, update streaks, hand over the seat if earned |
+| `deposit / withdraw` | depositors | ERC20 vault shares priced at the block-open price |
+| `exit(id)` | challenger | leave and reclaim your bond |
+| `compound()` | anyone | reinvest collected fees, finish a deferred vault move |
+| `registerBenchmark(name, lower, upper)` | anyone, once | the passive reference range. No owner, no bond, never competes. |
+| `benchmarkReport()` | view | vault vs benchmark growth, since start and this epoch |
+
+</details>
+
+<details>
+<summary><b>Repository layout</b></summary>
+
+```
+contracts/
+  src/OorkaHook.sol              the hook, the vault (ERC20 shares) and the curator registry, in one contract
+  src/reactive/                  OorkaReactive (Reactive CRON) + OorkaKeeper (callback, settles epochs)
+  test/                          46 Foundry tests + 5 invariants
+  script/DeployLocal.s.sol       local world with seeded curators
+  script/DeployTestnet.s.sol     deploy against a real v4 PoolManager
+frontend/                        Vite + React + viem app (landing, arena, vault, curate, swap, docs)
+  scripts/                       deploy-testnet, deploy-reactive, deploy-local, market (demo trader)
+.github/workflows/               CI (forge build + test), Pages, Demo market
+demo.sh                          one-command local demo
+```
+
+</details>
+
+---
+
+## Tests
+
+**46 tests + 5 invariants, all green in CI.**
+
+| Suite | What it proves |
+|---|---|
+| **Hook, unit** (31) | the probe measures fees without capital · first registrant takes the seat and the vault follows · takeover after the streak · streaks reset on takeover · slashed bond goes to depositors · a trending market favours the wide range · an out-of-range challenger never wins · in-block manipulation is ignored · the TWAP ignores a push across a block boundary but follows a sustained move · donations revert · performance fee only above the benchmark · the benchmark starts flat, can't move, exit or take the seat, and uses no curator slot · deposit/withdraw round trips · bond, range and access-control reverts · churn reuses slots · a takeover during a price push changes the seat and waits to move the vault |
+| **Hook, fuzz** (2 × 256 runs) | a deposit/withdraw round trip can never create value · range validation holds for any tick pair |
+| **Invariants** (5, 32 runs × 60 calls) | random trades, deposits, withdrawals, registrations, range changes, exits, time and settlements; after every step: the hook is **solvent** (idle balances + bonds), the vault's booked liquidity **equals the PoolManager's**, the curator array **stays bounded**, there is **exactly one live seat holder** (never the benchmark), every probe **sits at its declared range** |
+| **Reactive keeper** (13) | no-op mid-epoch · settles an ended epoch · drives a full takeover alone · rejects foreign callers and foreign reactive contracts · only the system contract calls `react()` · callback carries the right chain, recipient, gas and payload · requests every N ticks · waits for the keeper to be set · pays only the system contract / proxy · pause unsubscribes, resume covers debt · ignores other topics · settle fits the callback gas budget |
+
+```bash
+cd contracts && forge test
+```
 
 ---
 
@@ -113,161 +217,66 @@ Callback proxy addresses and CRON topics come from the [Reactive docs](https://d
 Needs [Foundry](https://book.getfoundry.sh/getting-started/installation) and Node 18+.
 
 ```bash
-./demo.sh
+./demo.sh        # anvil + PoolManager + tokens + hook + seeded curators + frontend → http://localhost:5173
 ```
 
-Then open http://localhost:5173. That one command:
+<details>
+<summary><b>Windows, Node-only, and testnet options</b></summary>
 
-1. starts a local anvil chain
-2. deploys a PoolManager, tETH/tUSD test tokens, swap and LP routers, and the hook at a flag-mined CREATE2 address
-3. creates a tETH/tUSD pool at about 3,000 with deep background liquidity
-4. seeds three curators (Passive Pam ±40% holds the seat, Tight Tony ±3%, Mid Mia ±10%), a fixed wide-range benchmark and a vault deposit
-5. starts the frontend
+**Windows:** run `./demo.sh` from WSL, or run `anvil --host 0.0.0.0` and the deploy steps in WSL and start the frontend from Windows (`cd frontend && npm install && npx vite`). The RPC comes from `VITE_RPC_URL` (default `http://127.0.0.1:8545`).
 
-**On Windows:** run `./demo.sh` from WSL (Ubuntu) with Foundry and Node installed there. Or split it: run `anvil --host 0.0.0.0` and the deploy steps from `demo.sh` inside WSL, then start the frontend from Windows with `cd frontend && npm install && npx vite`. WSL forwards `127.0.0.1:8545` to Windows, so the frontend reaches anvil. The frontend reads the RPC URL from `VITE_RPC_URL` (default `http://127.0.0.1:8545`).
-
-**Without Foundry (Node only).** Use this on any OS where forge or anvil can't run, or where native binaries are blocked. A Hardhat 2.20 devnet (pure-JS EVM, Cancun) plays anvil's role, and the contracts come prebuilt from CI:
+**Without Foundry (Node only):** a Hardhat devnet plays anvil's role and the contracts come prebuilt from CI:
 
 ```bash
-# 1. devnet on :8545 (same dev accounts and chain id as anvil)
-cd local-chain && npm install && npm run node
-
-# 2. in a second terminal: fetch CI's build artifacts and deploy the local world
-gh run download -R debojyoti10CC/oorka -n contracts-out -D ../ci-out
+cd local-chain && npm install && npm run node                                   # devnet on :8545
+gh run download -R debojyoti10CC/oorka -n contracts-out -D ../ci-out             # second terminal
 cd frontend && npm install && node scripts/deploy-local.mjs ../ci-out
-
-# 3. dashboard with Hardhat-aware time controls
 npx vite --mode hardhat
 ```
 
-The frontend signs with anvil's dev keys, so there's no wallet popup. Use **Acting as** to switch between the depositor, fresh challenger wallets and the seeded curators.
+The local frontend signs with dev keys, so there's no wallet popup. Use **Acting as** to switch between the depositor, fresh challengers and the seeded curators.
 
-### Tests
+**Against the live testnet deployment:**
 
 ```bash
-cd contracts
-forge test
+cd frontend && npm install && npx vite --mode unichain
 ```
 
-46 tests and 5 invariants, covering:
-- the probe measuring fees
-- a takeover after the streak
-- slashing going to depositors
-- a trending market favouring the wide range
-- in-block manipulation being ignored
-- donations being rejected by the hook
-- the benchmark: starts flat, can't be moved, exited or seated, tracks the vault, doesn't use a curator slot
-- deposit/withdraw round trips, plus a fuzzed round trip that can never create value
-- fuzzed range validation
-- a takeover during a price push (seat changes, vault waits), and register/exit churn reusing slots
-- an invariant suite that runs random sequences of trades, deposits, withdrawals, curator churn, range changes and settlements, and checks after every step: the hook stays solvent (idle balances plus bonds), the vault's booked liquidity matches the PoolManager, the curator array stays bounded, there's exactly one live seat holder, and every probe sits at its declared range
-- the Reactive keeper: no-op mid-epoch, settles an ended epoch, drives a full takeover alone, rejects foreign callers and foreign reactive contracts, only the system contract can call `react()`, callback requests carry the right chain/recipient/gas/payload, pause and resume (debt settled first), payments go only to the system contract or proxy, settle fits the callback gas budget
-- all the access-control reverts
-
-### Testnet
+**Your own testnet deployment:**
 
 ```bash
 cd contracts
-PRIVATE_KEY=0x... \
-POOL_MANAGER=0x00b036b58a818b1bc34d502d3fe730db729e62ac \
+PRIVATE_KEY=0x... POOL_MANAGER=0x00b036b58a818b1bc34d502d3fe730db729e62ac \
 forge script script/DeployTestnet.s.sol --rpc-url https://sepolia.unichain.org --broadcast
 ```
 
-That's the Unichain Sepolia PoolManager. Sepolia, Base Sepolia and Arbitrum Sepolia addresses are in the script header. It deploys test tokens, the hook, routers, a pool with liquidity, a "Genesis" seat holder and the benchmark, and writes `deployments/<chainId>.json`.
+</details>
+
+**What to try:** hit **Trade in a range** a few times and the tight curator out-earns the wide one on fees. Settle a few epochs and watch the seat change hands and the vault bar slide to the new range. Then **Pump**: the price leaves the tight range, its lane goes hatched, and the wide range leads. The market decides who should manage; the hook works it out alone.
+
+<p align="center"><img src="docs/takeover.png" alt="Takeover" width="49%"> <img src="docs/pump.png" alt="Pump" width="49%"></p>
 
 ---
 
 ## Partner integrations
 
-| Partner | What it does in Oorka | Where in the code |
+| Partner | What it does in Oorka | Where |
 |---|---|---|
-| **Reactive Network** | Keeper-free epoch settlement. A reactive contract subscribes to Reactive's CRON events and calls back to a keeper on the hook's chain. The keeper accepts only the Reactive callback proxy plus our own reactive contract's address, and settles the epoch once it has ended. | [`contracts/src/reactive/OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) (CRON subscription, `react()`, `requestCallbackV_1_0`)<br>[`contracts/src/reactive/OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) (proxy + sender authorisation, `poke()` settlement, `pay()`)<br>[`contracts/test/OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (13 tests) |
-
-No other partner integrations.
+| **Reactive Network** | Keeper-free epoch settlement: a CRON-driven reactive contract calls back to a keeper that settles ended epochs. | [`OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) · [`OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) · [`OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (13 tests) |
 
 ## Credits
 
-Oorka's hook, vault, scoring, benchmark, settlement price and keeper logic were written for this project. It builds on:
+The hook, vault, scoring, benchmark, settlement price and keeper were written for this project. They build on:
 
-- **Uniswap v4** ([v4-core](https://github.com/Uniswap/v4-core), [v4-periphery](https://github.com/Uniswap/v4-periphery)):
-  - `PoolManager`, `StateLibrary`, `TickMath`, `SqrtPriceMath` and `LiquidityAmounts`;
-  - the test helpers `Deployers`, `PoolSwapTest` and `PoolModifyLiquidityTest`, used in tests and the local demo.
+- **Uniswap v4** ([v4-core](https://github.com/Uniswap/v4-core), [v4-periphery](https://github.com/Uniswap/v4-periphery)): `PoolManager`, `StateLibrary`, `TickMath`, `SqrtPriceMath`, `LiquidityAmounts`, and the test helpers `Deployers`, `PoolSwapTest`, `PoolModifyLiquidityTest`.
 - **solmate**: `ERC20` (vault shares) and `MockERC20` (test tokens).
-- **Reactive Network**: the system-contract and callback-proxy interfaces follow [reactive-lib-omni](https://github.com/Reactive-Network/reactive-lib-omni) (`AbstractReactive`, `AbstractCallback`, `AbstractPayer`), implemented inline to stay on solc 0.8.26. The CRON subscription pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
-- **Foundry** (forge, anvil), and **viem** + **React** + **Vite** for the dashboard.
-- **React Bits** [`<Dither />`](https://reactbits.dev): the animated hero background (`frontend/src/bits/Dither.jsx`), used unmodified.
-
-## Architecture
-
-```
-contracts/
-  src/OorkaHook.sol     the hook, the vault (ERC20 shares) and the curator registry, in one contract
-  src/reactive/            OorkaReactive (Reactive Network CRON) + OorkaKeeper (callback, settles epochs)
-  test/                    46 Foundry tests + 5 invariants (hook + reactive keeper)
-  script/DeployLocal.s.sol local world with seeded curators
-  script/DeployTestnet.s.sol deploy against a real v4 PoolManager
-frontend/                  Vite + React + viem dashboard
-scripts/export_abi.py      copies ABIs into the frontend
-demo.sh                    one-command demo
-```
-
-**Hook permissions:** `afterInitialize` (bind to one pool), `beforeSwap` (snapshot the block-open price) and `beforeDonate` (reject donations, which would otherwise inflate scores). That's it: the hook never touches swap pricing, so traders pay normal v4 fees.
-
-**Position layout inside the PoolManager**, all owned by the hook and separated by salt:
-
-| salt | what |
-|---|---|
-| `bytes32(id)` | curator `id`'s probe, `1e9` liquidity at their declared range |
-| `type(uint256).max` | the vault's real liquidity at the seat holder's range |
-
-**Paper NAV math (per curator):**
-
-```
-fees     = (feeGrowthInside_now - feeGrowthInside_last) * vL / 2^128
-position = amounts(vL, range, blockOpenPrice)
-NAV      = value(position + fees + cash, blockOpenPrice)    // in tUSD
-```
-
-`vL` (virtual liquidity) is set so the portfolio is worth exactly its NAV when the range is declared. A range change re-derives `vL` from the current NAV minus the switch cost.
-
-**Key functions:**
-
-| function | who | what |
-|---|---|---|
-| `register(name, lower, upper, bond)` | anyone | enter. The first registrant takes the seat. |
-| `declareRange(id, lower, upper)` | curator | move your range. The seat holder's move also moves the vault. |
-| `settleEpoch()` | anyone | score, update streaks, hand over the seat if earned |
-| `deposit / withdraw` | depositors | ERC20 vault shares priced at the block-open price |
-| `exit(id)` | challenger | leave and reclaim your bond |
-| `compound()` | anyone | reinvest the vault's collected fees |
-| `registerBenchmark(name, lower, upper)` | anyone, once | set the passive reference range. No owner, no bond, never competes. |
-| `benchmarkReport()` | view | vault vs benchmark growth, since start and this epoch |
-
-## Mapped to the judging criteria
-
-| Criterion | Weight | Where Oorka scores |
-|---|---|---|
-| Original idea | 30% | Auction-managed AMM hooks (Chronus, Maestro, Turnstile in the UHI directory) *sell* the manager seat to the highest bidder. Oorka makes curators *earn* it with measured LP performance. Using dust probe positions to make v4 track fees at hypothetical ranges is, as far as we found, new. |
-| Unique execution | 25% | Pure v4 primitives (`getFeeGrowthInside`, salted positions, the unlock callback). No oracle, no off-chain service. Manipulation-resistant block-open pricing, donations blocked at the hook. Keeper-free settlement via Reactive Network. |
-| Impact | 20% | Turns "trust the manager" into "the manager is whoever is actually winning", and shows on-chain whether that beats a passive benchmark. Depositors get automatic manager replacement plus slashed bonds. Strategists get a permissionless way to prove skill without capital. |
-| Functionality | 15% | 46 passing tests and 5 invariants, one-command demo, a full lifecycle with real swaps on a real PoolManager. |
-| Presentation | 10% | Live dashboard: lanes view, standings with sparklines, vault-vs-benchmark report, on-chain event log. |
-
-## Pitch video script (about 3 minutes)
-
-1. **(0:00) The problem.** "LP vaults ask you to trust a manager. What if the manager had to keep earning the job?"
-2. **(0:20) The trick.** Show the lanes. "Every challenger's range has a dust probe, so Uniswap itself tracks what that range earns. These numbers are real fee growth, not a backtest."
-3. **(0:50) Ranging market.** Click *Trade in a range* twice. Point at Tony's paper NAV climbing faster than Pam's.
-4. **(1:20) Takeover.** *Skip to epoch end* and *Settle*, three times. Call out the qualifying epoch, the streak pips filling, then the takeover message and the vault bar jumping to Tony's range. Show the slashed bond in the event log.
-5. **(2:00) Regime change.** Click *Pump tETH*. Tony's bar goes hatched and Pam leads. "The hook will hand the seat back if this keeps up. Nobody had to vote."
-6. **(2:20) Does it pay?** Point at the Vault panel: vault vs benchmark, since start and this epoch. "Every settlement reports whether the contested seat beat sitting still."
-7. **(2:35) Safety.** Flash the attack/defense table. Mention block-open pricing, blocked donations, the Reactive keeper and the 46 tests plus invariants.
-8. **(2:50) Close.** "Oorka: curation as a competition that settles itself on-chain."
+- **Reactive Network**: system-contract and callback-proxy interfaces follow [reactive-lib-omni](https://github.com/Reactive-Network/reactive-lib-omni), implemented inline to stay on solc 0.8.26; the CRON pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
+- **Foundry**, **viem**, **React**, **Vite**, and **React Bits** [`<Dither />`](https://reactbits.dev) for the hero background (unmodified).
 
 ## Next steps
 
-- Wallet-connected frontend for testnets (the demo uses anvil dev keys)
 - Per-epoch fee-credit caps against wash trading
-- Benchmark-relative performance fees: the seat holder earns a cut only on returns above the benchmark, which the hook already measures
 - Several vaults per pool with different risk mandates, all reading the same leaderboard
 - Swap-based rebalancing on migration instead of leaving the unmatched side idle
+
+<div align="center"><sub><b>Oorka</b>: curation as a competition that settles itself.</sub></div>
