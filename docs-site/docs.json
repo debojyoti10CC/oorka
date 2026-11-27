@@ -41,11 +41,17 @@
     }
   },
   "banner": {
-    "content": "Live on Unichain Sepolia: the hook settles every 15-minute epoch on its own through a Reactive Network keeper. [Open the arena](https://oorka.djyo.tech/#/arena)",
+    "content": "Live on Unichain Sepolia: Oorka Pulse settles each epoch seconds after it ends, with a CRON keeper as fallback. [Open the arena](https://oorka.djyo.tech/#/arena)",
     "dismissible": true
   },
   "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "cursor"]
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "cursor"
+    ]
   },
   "metadata": {
     "timestamp": true
@@ -120,9 +126,10 @@
             ]
           },
           {
-            "group": "Reactive keeper",
+            "group": "Automation",
             "pages": [
               "keeper/overview",
+              "keeper/pulse",
               "keeper/callback-flow",
               "keeper/deploy",
               "keeper/operations"
@@ -141,6 +148,7 @@
               "contracts/events-and-errors",
               "contracts/configuration",
               "contracts/oorka-reactive",
+              "contracts/oorka-pulse",
               "contracts/oorka-keeper",
               "contracts/addresses"
             ]

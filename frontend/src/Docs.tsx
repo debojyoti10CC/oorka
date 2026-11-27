@@ -205,7 +205,7 @@ fee    = excess * perfFeeBps / 10_000          // minted as oLP, no tokens leave
           <code>{`contracts/src/OorkaHook.sol              hook + vault (ERC-20 shares) + curator registry
 contracts/src/reactive/OorkaReactive.sol CRON subscriber on Reactive Network
 contracts/src/reactive/OorkaKeeper.sol   callback contract that settles epochs
-contracts/test/                          46 Foundry tests + 5 invariants`}</code>
+contracts/test/                          61 Foundry tests + 5 invariants`}</code>
         </pre>
 
         <h2 id="run">Run it</h2>

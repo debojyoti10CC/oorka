@@ -21,5 +21,13 @@
     "cronTopic": "Cron1000",
     "ticksPerPoke": 1,
     "deployTx": "0xb9195710c17c815117e98744c7391108095653e9498e279549e4b62d4a4a6463"
+  },
+  "pulse": {
+    "chainId": 5318007,
+    "contract": "0xdbb33964d494e7cabfb90656d682f3b09f42ba9d",
+    "keeper": "0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97",
+    "poolId": "0x29eaf896ba9c585b2535ce439b1df1adb9c1d8f2c865b4764dc51eaccd237c4b",
+    "cooldown": 30,
+    "deployTx": "0x719b5e4ccf13a653585f218b2fbb4f31c9c805ffdd41f1221d56b397c28e1813"
   }
 }

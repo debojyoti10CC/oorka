@@ -1,17 +1,18 @@
 ---
 title: "Testing"
-description: "46 tests and 5 invariants: what each one proves."
+description: "61 tests and 5 invariants: what each one proves."
 ---
 
 ```bash
 cd contracts && forge test
 ```
 
-<CardGroup cols={4}>
+<CardGroup cols={3}>
   <Card title="31" icon="flask-conical">hook unit tests</Card>
   <Card title="2" icon="shuffle">fuzz tests × 256 runs</Card>
   <Card title="5" icon="infinity">invariants, 32 runs × depth 60</Card>
   <Card title="13" icon="timer">Reactive keeper tests</Card>
+  <Card title="15" icon="activity">Oorka Pulse tests</Card>
 </CardGroup>
 
 ## Hook: core mechanism
@@ -109,3 +110,23 @@ Settings in `foundry.toml`: `[fuzz] runs = 256`, `[invariant] runs = 32, depth =
 | `test_reactiveIgnoresOtherTopics` | Unrelated logs ignored without reverting |
 
 A mock system contract is etched at `0x8888…8888` to stand in for Reactive's VM.
+
+## Oorka Pulse
+
+| Test | Proves |
+|---|---|
+| `test_subscribesToSwapsAndHookEventsOnDeploy` | Four subscriptions: pool `Swap`, `EpochSettled`, `VaultMoveDeferred`, `VaultMoved` |
+| `test_swapMidEpochDoesNothing` | No callback while the epoch is running |
+| `test_firstSwapAfterEpochEndRequestsACallback` | Callback with chain 1301, the keeper, 3M gas; `Triggered` carries the origin block and tx |
+| `test_fullLoopSettlesInTheSameSecond` | Swap log, callback, keeper settles: the seat changes at the epoch boundary with no CRON wait |
+| `test_cooldownStopsABurst` | Ten swaps produce one callback; a retry after the cooldown |
+| `test_epochSettledResetsTheClock` | `EpochSettled` moves the due time forward one epoch |
+| `test_deferredMoveIsFinishedOnTheNextSwap` | `VaultMoveDeferred` then a swap: the keeper calls `compound()` |
+| `test_vaultMovedClearsThePendingFlag` | `VaultMoved` clears the flag; no callback |
+| `test_ignoresOtherPoolsChainsAndContracts` | Foreign pool, chain, PoolManager or hook logs do nothing |
+| `test_waitsForKeeper` | No callbacks before `setKeeper` |
+| `test_reactOnlyFromSystem` | Only the system contract calls `react` |
+| `test_keeperIsOneShot` | `KeeperAlreadySet` |
+| `test_pauseUnsubscribesAndResumeCoversDebt` | Pause drops all four subscriptions; resume pays debt first |
+| `test_onlyOwnerPauses` | Only the owner can pause |
+| `test_keeperRejectsAnyOtherReactiveSender` | The Pulse keeper trusts only OorkaPulse |

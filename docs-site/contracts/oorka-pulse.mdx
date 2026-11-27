@@ -1,0 +1,58 @@
+---
+title: "OorkaPulse"
+description: "Reference for the event-driven reactive contract."
+---
+
+```solidity
+constructor(
+    uint256 _originChainId,   // 1301
+    address _poolManager,     // v4 PoolManager on the origin chain
+    address _hook,            // OorkaHook
+    bytes32 _poolId,          // keccak256(abi.encode(PoolKey))
+    uint256 _epochLength,     // hook's epochLength, seconds
+    uint256 _firstEpochDueAt, // hook's current epoch end
+    uint256 _cooldown         // seconds between callback requests
+) payable
+```
+
+Subscribes to four topics on the origin chain when the system contract has code: PoolManager `Swap` filtered by `topic1 = poolId`, and the hook's `EpochSettled`, `VaultMoveDeferred` and `VaultMoved`.
+
+## Functions
+
+<ResponseField name="react(LogRecord log)" type="onlySystem">
+  Hook logs update state (`epochDueAt`, `vaultMovePending`). A `Swap` log of this pool requests a callback to the keeper when the epoch is due or a vault move is pending, the keeper is set, and `cooldown` has passed since the last request. Emits `Triggered(reason, originBlock, originTx, request)`.
+</ResponseField>
+
+<ResponseField name="setKeeper(address keeper)" type="onlyOwner, one-shot">
+  Reverts `KeeperAlreadySet` on a second call.
+</ResponseField>
+
+<ResponseField name="setPaused(bool paused)" type="onlyOwner">
+  Unsubscribes from all four topics, or covers debt and resubscribes.
+</ResponseField>
+
+<ResponseField name="pay(uint256) · coverDebt()" type="system / anyone">
+  Same billing model as `OorkaReactive`.
+</ResponseField>
+
+## State
+
+| Name | Meaning |
+|---|---|
+| `epochDueAt` | Reactive-side estimate of the current epoch's end |
+| `vaultMovePending` | A takeover's vault move is waiting for an honest price |
+| `lastRequestAt` | Timestamp of the last callback request (cooldown) |
+| `requests` | Number of callback requests so far |
+
+## Events
+
+| Event | Meaning |
+|---|---|
+| `Triggered(Reason indexed reason, uint256 indexed originBlock, uint256 originTx, uint256 request)` | Callback requested. `reason`: 0 epoch due, 1 vault move pending |
+| `EpochClockSynced(uint256 epochDueAt)` | Clock reset after `EpochSettled` |
+| `VaultMoveFlag(bool pending)` | Pending flag set or cleared |
+| `KeeperSet(address)`, `Paused(bool)` | Admin |
+
+## Tests
+
+15 tests in [`contracts/test/OorkaPulse.t.sol`](https://github.com/debojyoti10CC/oorka/blob/main/contracts/test/OorkaPulse.t.sol): subscriptions, mid-epoch silence, first-swap-after-end callback (chain, recipient, gas), full loop settling at the epoch boundary, cooldown against bursts, clock reset on `EpochSettled`, deferred move finished by `compound()`, flag cleared by `VaultMoved`, filters for foreign pools/chains/contracts, waiting for the keeper, pause/resume with debt, owner-only pause, and the keeper rejecting any other reactive sender.

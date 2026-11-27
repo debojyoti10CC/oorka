@@ -18,7 +18,7 @@ A Uniswap v4 hook where the right to manage a vault's liquidity is won, and kept
 
 [**Live app**](https://oorka.djyo.tech) · [**Arena**](https://oorka.djyo.tech/#/arena) · [**Docs**](https://oorkadocs.djyo.tech) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
 
-<sub>UHI11 Hookathon · Active Management & Curated Liquidity</sub>
+<sub>The curator seat, earned on-chain.</sub>
 
 <a href="https://debojyoti10cc.github.io/oorka/"><img src="docs/readme/hero.jpg" alt="Oorka: the curator seat is earned, on-chain." width="100%"></a>
 
@@ -63,7 +63,7 @@ flowchart TB
 
 <table>
 <tr>
-<td width="25%" align="center"><h2>46</h2><sub>Foundry tests + 5 invariants, green in CI</sub></td>
+<td width="25%" align="center"><h2>61</h2><sub>Foundry tests + 5 invariants, green in CI</sub></td>
 <td width="25%" align="center"><h2>0</h2><sub>oracles, owners, admin keys or off-chain services</sub></td>
 <td width="25%" align="center"><h2>1e9</h2><sub>liquidity per probe: dust, but v4 tracks fees there</sub></td>
 <td width="25%" align="center"><h2>10%</h2><sub>seat holder's cut, only above the benchmark and high-water mark</sub></td>
@@ -100,8 +100,10 @@ flowchart TB
 | Contract | Chain | Address |
 |---|---|---|
 | **OorkaHook** (hook + vault + curator registry) | Unichain Sepolia | [`0xbeEcbe71d831880f2038Bc35b613e100F1f010A0`](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) |
-| **OorkaKeeper** (Reactive callback, settles epochs) | Unichain Sepolia | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
-| **OorkaReactive** (CRON subscriber) | Reactive Lasna | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
+| **OorkaPulse** (event-driven: reacts to pool swaps) | Reactive Lasna | [`0xdbb33964d494e7cabfb90656d682f3b09f42ba9d`](https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d) |
+| **OorkaKeeper (Pulse)** | Unichain Sepolia | [`0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97`](https://sepolia.uniscan.xyz/address/0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97) |
+| **OorkaKeeper (CRON)** | Unichain Sepolia | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
+| **OorkaReactive** (CRON fallback) | Reactive Lasna | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
 | Uniswap v4 PoolManager | Unichain Sepolia | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
 | tETH / tUSD test tokens | Unichain Sepolia | [`0x64A3…10e6`](https://sepolia.uniscan.xyz/address/0x64A3C35b31f04e3c92a45E9d003468e4574810e6) / [`0xaCB1…Ac5C`](https://sepolia.uniscan.xyz/address/0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C) |
 
@@ -130,7 +132,31 @@ flowchart TB
 
 > **Known limitation.** A curator could wash-trade to inflate fee growth at their range. Unlike a donation it costs them the swap fee plus price impact, the fees go to *real* liquidity in that range, and every overlapping range benefits too. A production version would cap per-epoch fee credit or weight fees by unique swappers.
 
-## Keeper-free settlement (Reactive Network)
+## Oorka Pulse: settlement within seconds
+
+Epochs end on a clock, but nothing happens on-chain until someone calls `settleEpoch()`. **Oorka Pulse** is a reactive contract on Reactive Network that watches the pool itself. The first swap after an epoch ends triggers a callback that settles it, so the seat changes hands seconds after the boundary instead of at the next timer tick. It also finishes vault moves that were deferred during a price push, on the next honest swap.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor T as Trader
+    participant PM as PoolManager (Unichain)
+    participant P as OorkaPulse (Reactive Lasna)
+    participant K as Keeper (Unichain)
+    participant H as OorkaHook
+    T->>PM: swap after the epoch ended
+    PM-->>P: Swap(poolId) log
+    P->>P: epoch due? cooldown passed?
+    P-->>K: callback poke()
+    K->>H: settleEpoch()
+    H-->>P: EpochSettled log resets Pulse's clock
+```
+
+**Measured live:** origin swap to `Settled` callback in **2 s** (swap `0x1059affe…d603`, reactive tx `0x2c2a0652…672c`, callback `0x306dd6f7…dd54`). The CRON timer alone could take up to 17 minutes.
+
+**Safeguards.** A 30-second cooldown stops swap bursts from requesting callback bursts. Logs from any other pool, chain or contract are ignored. Pulse only calls the same keeper path anyone could, and the hook re-checks the epoch end and the price itself. The CRON keeper below keeps running as the fallback for quiet pools, and `settleEpoch()` stays permissionless. Details: [docs](https://oorkadocs.djyo.tech/keeper/pulse).
+
+## CRON fallback (Reactive Network)
 
 ```mermaid
 sequenceDiagram
@@ -278,7 +304,7 @@ NAV      = value(position + fees + cash, blockOpenPrice)        // in tUSD
 contracts/
   src/OorkaHook.sol              the hook, the vault (ERC20 shares) and the curator registry, in one contract
   src/reactive/                  OorkaReactive (Reactive CRON) + OorkaKeeper (callback, settles epochs)
-  test/                          46 Foundry tests + 5 invariants
+  test/                          61 Foundry tests + 5 invariants
   script/DeployLocal.s.sol       local world with seeded curators
   script/DeployTestnet.s.sol     deploy against a real v4 PoolManager
 frontend/                        Vite + React + viem app (landing, arena, vault, curate, swap, docs)
@@ -293,13 +319,14 @@ demo.sh                          one-command local demo
 
 ## Tests
 
-**46 tests + 5 invariants, all green in CI.**
+**61 tests + 5 invariants, all green in CI.**
 
 | Suite | What it proves |
 |---|---|
 | **Hook, unit** (31) | the probe measures fees without capital · first registrant takes the seat and the vault follows · takeover after the streak · streaks reset on takeover · slashed bond goes to depositors · a trending market favours the wide range · an out-of-range challenger never wins · in-block manipulation is ignored · the TWAP ignores a push across a block boundary but follows a sustained move · donations revert · performance fee only above the benchmark · the benchmark starts flat, can't move, exit or take the seat, and uses no curator slot · deposit/withdraw round trips · bond, range and access-control reverts · churn reuses slots · a takeover during a price push changes the seat and waits to move the vault |
 | **Hook, fuzz** (2 × 256 runs) | a deposit/withdraw round trip can never create value · range validation holds for any tick pair |
 | **Invariants** (5, 32 runs × 60 calls) | random trades, deposits, withdrawals, registrations, range changes, exits, time and settlements; after every step: the hook is **solvent** (idle balances + bonds), the vault's booked liquidity **equals the PoolManager's**, the curator array **stays bounded**, there is **exactly one live seat holder** (never the benchmark), every probe **sits at its declared range** |
+| **Oorka Pulse** (15) | four subscriptions on deploy · silent mid-epoch · first swap after the epoch ends requests one callback (chain, keeper, 3M gas) · full loop settles at the epoch boundary · cooldown turns ten swaps into one callback · `EpochSettled` resets the clock · deferred vault move finished by `compound()` · `VaultMoved` clears the flag · ignores foreign pools, chains and contracts · waits for the keeper · system-only `react()` · one-shot keeper · pause/resume with debt · owner-only pause · keeper trusts only Pulse |
 | **Reactive keeper** (13) | no-op mid-epoch · settles an ended epoch · drives a full takeover alone · rejects foreign callers and foreign reactive contracts · only the system contract calls `react()` · callback carries the right chain, recipient, gas and payload · requests every N ticks · waits for the keeper to be set · pays only the system contract / proxy · pause unsubscribes, resume covers debt · ignores other topics · settle fits the callback gas budget |
 
 ```bash
@@ -373,7 +400,7 @@ flowchart TB
 
 | Partner | What it does in Oorka | Where |
 |---|---|---|
-| **Reactive Network** | Keeper-free epoch settlement: a CRON-driven reactive contract calls back to a keeper that settles ended epochs. | [`OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) · [`OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) · [`OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (13 tests) |
+| **Reactive Network** | Event-driven settlement: OorkaPulse reacts to the pool's swaps and the hook's events and calls back within seconds; a CRON-driven reactive contract is the fallback. Both call a keeper that settles ended epochs. | [`OorkaPulse.sol`](contracts/src/reactive/OorkaPulse.sol) · [`OorkaPulse.t.sol`](contracts/test/OorkaPulse.t.sol) (15 tests) · [`OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) · [`OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) · [`OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (13 tests) |
 
 ## Credits
 

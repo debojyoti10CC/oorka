@@ -76,7 +76,7 @@
   {\normalsize\color{ink2} Making LP vault managers earn the seat with measured, on-chain performance}\\[0.2em]
   {\color{accent}\rule{\linewidth}{1.2pt}}
 }
-\author{Debojyoti De Majumder\\{\small\color{ink2}UHI11 Hookathon \textperiodcentered{} Theme: Active Management \& Curated Liquidity}}
+\author{Debojyoti De Majumder\\{\small\color{ink2}oorka.djyo.tech \textperiodcentered{} oorkadocs.djyo.tech}}
 \date{\small November 2026 \textperiodcentered{} Draft v1.0 \textperiodcentered{} \href{https://github.com/debojyoti10CC/oorka}{github.com/debojyoti10CC/oorka}}
 
 \begin{document}
@@ -85,7 +85,7 @@
 
 \begin{abstract}
 \noindent
-Curated liquidity vaults ask depositors to trust a manager whose skill cannot be verified on-chain and who is hard to replace. We present \textbf{Oorka}, a Uniswap~v4 hook that turns the manager seat of a concentrated-liquidity vault into a continuous, self-settling competition. Any strategist can challenge the incumbent by posting a bond and declaring a price range. The hook places a dust-sized \emph{probe position} at every declared range. This forces the PoolManager to track fee growth at exactly those ticks, so each strategy's performance is measured from real swap flow, with no oracle, no off-chain backtest and no capital at risk. Each curator holds a virtual \emph{paper portfolio} that is marked to a manipulation-resistant reference price. A challenger who beats the incumbent by a margin for a configurable number of consecutive epochs takes the seat. The vault's real liquidity then migrates to the winner's range in the same transaction, and part of the deposed manager's bond is paid to depositors. A passive \emph{benchmark} portfolio is scored alongside the curators, so every epoch reports on-chain whether active management beat doing nothing. The seat holder is paid a performance fee only on value created above the benchmark and the vault's high-water mark. Settlement prices use a time-weighted average of block-open ticks that the hook builds itself. Donations, which would inflate fee growth without trading, are rejected. Settlement is automated without off-chain keepers via Reactive Network. The system is deployed on Unichain Sepolia, with its reactive contract on Reactive Lasna. Auction-managed AMMs sell the manager seat to the highest bidder; Oorka makes curators \emph{earn} it.
+Curated liquidity vaults ask depositors to trust a manager whose skill cannot be verified on-chain and who is hard to replace. We present \textbf{Oorka}, a Uniswap~v4 hook that turns the manager seat of a concentrated-liquidity vault into a continuous, self-settling competition. Any strategist can challenge the incumbent by posting a bond and declaring a price range. The hook places a dust-sized \emph{probe position} at every declared range. This forces the PoolManager to track fee growth at exactly those ticks, so each strategy's performance is measured from real swap flow, with no oracle, no off-chain backtest and no capital at risk. Each curator holds a virtual \emph{paper portfolio} that is marked to a manipulation-resistant reference price. A challenger who beats the incumbent by a margin for a configurable number of consecutive epochs takes the seat. The vault's real liquidity then migrates to the winner's range in the same transaction, and part of the deposed manager's bond is paid to depositors. A passive \emph{benchmark} portfolio is scored alongside the curators, so every epoch reports on-chain whether active management beat doing nothing. The seat holder is paid a performance fee only on value created above the benchmark and the vault's high-water mark. Settlement prices use a time-weighted average of block-open ticks that the hook builds itself. Donations, which would inflate fee growth without trading, are rejected. Settlement is automated without off-chain keepers via Reactive Network: an event-driven reactive contract, \emph{Oorka Pulse}, watches the pool's own swaps and settles each epoch seconds after it ends, with a CRON timer as fallback. The system is deployed on Unichain Sepolia, with its reactive contract on Reactive Lasna. Auction-managed AMMs sell the manager seat to the highest bidder; Oorka makes curators \emph{earn} it.
 \end{abstract}
 
 \vspace{0.4em}
@@ -95,7 +95,7 @@ Curated liquidity vaults ask depositors to trust a manager whose skill cannot be
 (2)~A \emph{contested curation} mechanism: epochs, margins, win streaks, bonded challengers, automatic liquidity migration and slashing.
 (3)~An on-chain \emph{benchmark report} that compares the vault with a passive range every epoch, and a \emph{benchmark-relative performance fee} with a high-water mark that pays the manager only for real outperformance.
 (4)~A \emph{manipulation-resistant pricing layer}: block-open pricing for accounting, a hook-built epoch TWAP for settlement, and rejection of \code{donate()}.
-(5)~\emph{Keeper-free settlement} through Reactive Network CRON callbacks.
+(5)~\emph{Event-driven, keeper-free settlement}: Oorka Pulse reacts to the pool's swaps and the hook's events through Reactive Network and settles within seconds of an epoch boundary, with a CRON fallback.
 (6)~A \emph{live testnet deployment} on Unichain Sepolia and Reactive Lasna, with a public dashboard.
 }}
 
@@ -112,9 +112,9 @@ Concentrated liquidity~\cite{univ3} turned liquidity provision into an active st
   \item \textbf{Replacement is costly.} Removing an under-performing manager takes governance or a full withdrawal, which realises slippage and gas for every depositor.
 \end{itemize}
 
-Uniswap~v4 hooks~\cite{univ4} let a pool run custom logic around swaps and liquidity changes. The UHI11 theme, \emph{Active Management \& Curated Liquidity}, asks for curated LP networks, performance and strategy hooks, and strategy migration. Oorka treats these as one mechanism rather than three features: \emph{measure} every candidate strategy on live flow, \emph{select} the manager by measured performance, and \emph{migrate} the vault automatically when the measurement says so.
+Uniswap~v4 hooks~\cite{univ4} let a pool run custom logic around swaps and liquidity changes. Active liquidity management usually splits into three separate problems: curating strategists, measuring their strategies, and migrating capital between them. Oorka treats these as one mechanism rather than three features: \emph{measure} every candidate strategy on live flow, \emph{select} the manager by measured performance, and \emph{migrate} the vault automatically when the measurement says so.
 
-\paragraph{Positioning.} Auction-managed AMMs (am-AMM)~\cite{amamm}, and the hooks that implement them (e.g.\ Chronus, Maestro, Turnstile in the UHI hook directory~\cite{uhidir}), also contest a manager role, but they \emph{sell} it: the seat goes to whoever pays the most rent. Oorka allocates the seat by \emph{demonstrated LP performance}, and depositors can audit every input to that decision on-chain.
+\paragraph{Positioning.} Auction-managed AMMs (am-AMM)~\cite{amamm}, and the hooks that implement them (e.g.\ Chronus, Maestro, Turnstile in public hook directories~\cite{uhidir}), also contest a manager role, but they \emph{sell} it: the seat goes to whoever pays the most rent. Oorka allocates the seat by \emph{demonstrated LP performance}, and depositors can audit every input to that decision on-chain.
 
 % ====================================================================
 \section{Background}
@@ -384,7 +384,7 @@ Seat holder inflates the share price at settlement to collect a fee & Fees are c
 \paragraph{Residual risk: wash trading.} A curator can trade against their own range to raise its fee growth. Unlike a donation, this costs swap fees plus price impact. The fees accrue to \emph{real} liquidity in that range, and to every overlapping range, including the incumbent's if they overlap. A production deployment would add per-epoch fee-credit caps or weight fee growth by distinct swappers.
 
 % ====================================================================
-\section{Keeper-free settlement with Reactive Network}
+\section{Keeper-free settlement with Reactive Network}\label{sec:keeper}
 \code{settleEpoch()} is permissionless but needs a caller. Oorka removes that dependency using Reactive Network~\cite{reactive} (Figure~\ref{fig:reactive}).
 
 \begin{figure}[h]
@@ -407,6 +407,19 @@ Seat holder inflates the share price at settlement to collect a fee & Fees are c
 \label{fig:reactive}
 \end{figure}
 
+\subsection{Oorka Pulse: event-driven settlement}
+A timer is a blunt instrument: with a 17-minute CRON tick and 15-minute epochs, an ended epoch can wait up to a full tick before the seat changes hands, and a vault move deferred during a price push waits just as long. \emph{Oorka Pulse} is a second reactive contract that listens to the pool instead of the clock. It subscribes on Unichain Sepolia to the PoolManager's \code{Swap} events filtered to Oorka's \code{PoolId}, and to the hook's \code{EpochSettled}, \code{VaultMoveDeferred} and \code{VaultMoved}.
+
+\begin{itemize}
+  \item \textbf{Epoch clock.} Pulse mirrors the hook's epoch end. Every \code{EpochSettled} sets $\textit{dueAt} \leftarrow t + T$.
+  \item \textbf{Settle on time.} The first swap with $t \ge \textit{dueAt}$ requests a callback; the keeper calls \code{settleEpoch()}. Settlement lands seconds after the boundary.
+  \item \textbf{Finish deferred moves.} \code{VaultMoveDeferred} raises a flag; the next swap requests a callback, and the keeper calls \code{compound()}, which moves the vault once the price is honest. \code{VaultMoved} clears the flag.
+  \item \textbf{Safeguards.} A cooldown (30\,s) turns a burst of swaps into one callback. Logs from any other chain, pool or contract are ignored without reverting. Pulse calls the same keeper path anyone could, and the hook re-checks the epoch end and the price itself. The CRON contract keeps running as the fallback for quiet pools.
+\end{itemize}
+
+Each request emits \code{Triggered(reason, originBlock, originTx, n)}, which lets the full loop (origin swap $\rightarrow$ reactive transaction $\rightarrow$ callback) be measured from block timestamps on both chains. On the live deployment the first measured loop, from the origin swap to the keeper\'s \code{Settled} event, took 2 seconds; the CRON fallback alone can take up to 17 minutes.
+
+\subsection{Liveness, not authority}
 The keeper holds no privileged role on the hook: \code{settleEpoch()} is open to anyone. The keeper only adds \emph{liveness}, so the seat changes hands on time even when nobody is watching. A takeover settlement, which migrates the vault and re-marks every curator, uses under $1.5$M gas, half the $3$M callback budget. This bound is asserted in the tests.
 
 % ====================================================================
@@ -497,7 +510,7 @@ $L_p$ & probe liquidity & $10^9$ \\
 % ====================================================================
 \section{Evaluation}\label{sec:eval}
 \subsection{Test suite}
-The Foundry suite has 36 tests: 29 for the hook and 7 for the Reactive keeper. It runs against a real v4 \code{PoolManager}, and continuous integration builds the contracts and runs every test on each push.
+The Foundry suite has 61 tests and 5 invariants: 31 unit and 2 fuzz tests for the hook, 13 for the CRON keeper, 15 for Oorka Pulse, and a stateful invariant suite. It runs against a real v4 \code{PoolManager}, and continuous integration builds the contracts and runs every test on each push.
 \begin{itemize}
   \item \textbf{Performance fee:} paid when the vault beats the benchmark, with depositors keeping 90\% of the excess; no fee when the benchmark wins; no fee on a flat epoch.
   \item \textbf{Measurement:} probes measure fees without capital; tight ranges out-earn wide ones in ranging markets; wide ranges win trending markets; out-of-range challengers never win.
@@ -505,7 +518,9 @@ The Foundry suite has 36 tests: 29 for the hook and 7 for the Reactive keeper. I
   \item \textbf{Benchmark:} starts flat; can't be moved, exited or seated; tracks the vault; uses no curator slot.
   \item \textbf{Manipulation:} in-block price pushes are ignored; donations revert with the exact wrapped error; a cross-block push leaves the settlement price near fair; a sustained move held for half the epoch counts for half.
   \item \textbf{Keeper:} no-op mid-epoch; settles ended epochs; drives a full takeover alone; rejects foreign callers and foreign RVM ids; settlement fits within half the callback gas budget.
-  \item \textbf{Accounting:} deposit/withdraw round trips; access-control reverts.
+  \item \textbf{Oorka Pulse:} silent mid-epoch; the first swap after the boundary requests exactly one callback; the full loop settles at the boundary; cooldown against bursts; deferred moves finished by \code{compound()}; foreign pools, chains and contracts ignored.
+  \item \textbf{Invariants:} under random trades, deposits, withdrawals, curator churn and settlements, the hook stays solvent, the vault's books match the PoolManager, the curator array stays bounded, there is exactly one seat holder, and every probe sits at its declared range.
+  \item \textbf{Accounting:} deposit/withdraw round trips (and a fuzzed version that can never create value); access-control reverts.
 \end{itemize}
 
 \subsection{Local demonstration}
@@ -539,7 +554,7 @@ When the market trends (the demo's \emph{Pump tETH} action), price leaves Tony's
 
 % ====================================================================
 \section{Testnet deployment}\label{sec:deploy}
-Oorka runs on \textbf{Unichain Sepolia} (chain 1301) against the canonical Uniswap~v4 \code{PoolManager}, with its reactive contract on \textbf{Reactive Lasna} (chain 5318007). The deployment seeds a tETH/tUSD pool with three curators, the benchmark and a vault deposit, and uses the same parameters as the local demo ($T = 10$ minutes).
+Oorka runs on \textbf{Unichain Sepolia} (chain 1301) against the canonical Uniswap~v4 \code{PoolManager}, with its reactive contract on \textbf{Reactive Lasna} (chain 5318007). The deployment seeds a tETH/tUSD pool with three curators, the benchmark and a vault deposit, with $T = 15$ minutes. A scheduled trader moves the price through slow waves four times an hour so curators have real flow to be scored on.
 
 \begin{table}[H]
 \centering\small
@@ -547,25 +562,27 @@ Oorka runs on \textbf{Unichain Sepolia} (chain 1301) against the canonical Unisw
 \toprule
 \textbf{Contract} & \textbf{Address} \\
 \midrule
-\code{OorkaHook} (hook, vault, registry) & \href{https://sepolia.uniscan.xyz/address/0x86486253aC2C85CffaA711d297c64AF4eAb050A0}{\texttt{\footnotesize 0x86486253aC2C85CffaA711d297c64AF4eAb050A0}} \\
-\code{OorkaKeeper} (Reactive callback) & \href{https://sepolia.uniscan.xyz/address/0xe2816a99acc021bbe019214f96dac78e648f1509}{\texttt{\footnotesize 0xe2816a99acc021bbe019214f96dac78e648f1509}} \\
-\code{OorkaReactive} (Lasna, Cron100) & \href{https://lasna.reactscan.net/address/0x086143eb1a65bdf2754f0b9190f85de6b638cb52}{\texttt{\footnotesize 0x086143eb1a65bdf2754f0b9190f85de6b638cb52}} \\
-Uniswap v4 \code{PoolManager} & \href{https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac}{\texttt{\footnotesize 0x00b036b58a818b1bc34d502d3fe730db729e62ac}} \\
-tETH / tUSD test tokens & \texttt{\footnotesize 0x5387EeaE799738A34C982E705804Dfa95FDda26b} / \texttt{\footnotesize 0xaC150B417a0b1c76353Cf647A9434fBE49250a6C} \\
+\code{OorkaHook} (hook, vault, registry) & \href{https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0}{\texttt{\footnotesize 0xbeEcbe71d831880f2038Bc35b613e100F1f010A0}} \
+\code{OorkaPulse} (Lasna, event-driven) & \href{https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d}{\texttt{\footnotesize 0xdbb33964d494e7cabfb90656d682f3b09f42ba9d}} \
+\code{OorkaKeeper} (Pulse callbacks) & \href{https://sepolia.uniscan.xyz/address/0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97}{\texttt{\footnotesize 0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97}} \
+\code{OorkaReactive} (Lasna, Cron1000 fallback) & \href{https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450}{\texttt{\footnotesize 0x86c807a7a56c63472d52c46ebd2441d2067d7450}} \
+\code{OorkaKeeper} (CRON callbacks) & \href{https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5}{\texttt{\footnotesize 0x53b31469cf03ae9f0042c7d6cbeed46750e22da5}} \
+Uniswap v4 \code{PoolManager} & \href{https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac}{\texttt{\footnotesize 0x00b036b58a818b1bc34d502d3fe730db729e62ac}} \
+tETH / tUSD test tokens & \texttt{\footnotesize 0x64A3C35b31f04e3c92a45E9d003468e4574810e6} / \texttt{\footnotesize 0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C} \
 \bottomrule
 \end{tabularx}
 \caption{Live contracts. Explorer links: Uniscan (Unichain Sepolia) and Reactscan (Lasna).}
 \label{tab:deploy}
 \end{table}
 
-\paragraph{Dashboard.} A public dashboard at \href{https://debojyoti10cc.github.io/oorka/}{\texttt{debojyoti10cc.github.io/oorka}} reads the testnet deployment. Users connect a browser wallet to register as curators, deposit, trade, and settle epochs. The same frontend runs against a local chain for the scripted demo.
+\paragraph{Dashboard.} The app at \href{https://oorka.djyo.tech}{\texttt{oorka.djyo.tech}} (documentation at \href{https://oorkadocs.djyo.tech}{\texttt{oorkadocs.djyo.tech}}) reads the testnet deployment. Users connect a browser wallet to register as curators, deposit, trade, and settle epochs. The same frontend runs against a local chain for the scripted demo.
 
-\paragraph{Status at the time of writing (22 November 2026).} All three Oorka contracts were confirmed on-chain. The hook had four registered portfolios (three curators and the benchmark) and was in epoch~0. That epoch had ended, but no callback from Lasna had yet reached the keeper: it had logged no \code{Settled}, \code{Idle} or \code{SettleFailed} events since deployment. Settlement does not depend on the keeper, since \code{settleEpoch()} is permissionless and the dashboard can call it. The likely cause is an unpaid subscription debt. \code{OorkaReactive} owed $0.0123$ lREACT to Lasna's system contract at \texttt{0x8888\ldots8888}. The library helper \code{coverDebt()} pays the vendor address \texttt{0x\ldots fffFfF}, where the recorded debt was zero, so the debt was never settled and the subscription was not served. The fix is to pay the debt to the system contract directly, or to point the payer at it. This had not been applied at the time of writing.
+\paragraph{Status (27 November 2026).} Every ended epoch since deployment has been settled without a human transaction. Oorka Pulse settles epochs within seconds of the first swap after the boundary; the CRON contract covers the rest. Both reactive contracts run with zero debt.
 
 % ====================================================================
 \section{Related work}
 \begin{itemize}
-  \item \textbf{Auction-managed AMMs}~\cite{amamm} auction the right to set fees and capture arbitrage, paying rent to LPs. Hook implementations in the UHI directory include Chronus (strategists compete on volatility forecasts), Maestro (autonomous Reactive manager) and Turnstile (anti-entrenchment throttle). These allocate the seat by \emph{willingness to pay}; Oorka allocates it by \emph{measured LP performance}.
+  \item \textbf{Auction-managed AMMs}~\cite{amamm} auction the right to set fees and capture arbitrage, paying rent to LPs. Public hook implementations include Chronus (strategists compete on volatility forecasts), Maestro (autonomous Reactive manager) and Turnstile (anti-entrenchment throttle). These allocate the seat by \emph{willingness to pay}; Oorka allocates it by \emph{measured LP performance}.
   \item \textbf{Automated range managers} rebalance a fixed strategy, often with keepers or Reactive callbacks. They manage liquidity, but they don't let competing strategies prove themselves or replace each other.
   \item \textbf{LP tournaments and leaderboards} reward the best performers with prizes, but don't move depositor capital to the winner.
 \end{itemize}
@@ -582,7 +599,7 @@ tETH / tUSD test tokens & \texttt{\footnotesize 0x5387EeaE799738A34C982E705804Df
 
 % ====================================================================
 \section{Conclusion}
-Oorka replaces ``trust the manager'' with ``the manager is whoever is measurably winning''. Dust probe positions let Uniswap~v4 measure any strategy on live order flow. A small, auditable state machine turns those measurements into automatic manager selection and liquidity migration. A hook-built TWAP, block-open accounting and donation rejection make the measurements hard to game. A passive benchmark tells depositors, every epoch, whether active curation was worth it, and the manager is paid only for the part that was. Reactive Network is designed to keep the whole loop running without an operator.
+Oorka replaces ``trust the manager'' with ``the manager is whoever is measurably winning''. Dust probe positions let Uniswap~v4 measure any strategy on live order flow. A small, auditable state machine turns those measurements into automatic manager selection and liquidity migration. A hook-built TWAP, block-open accounting and donation rejection make the measurements hard to game. A passive benchmark tells depositors, every epoch, whether active curation was worth it, and the manager is paid only for the part that was. Reactive Network keeps the whole loop running without an operator, and Oorka Pulse closes each epoch seconds after it ends.
 
 % ====================================================================
 \begin{thebibliography}{9}\small

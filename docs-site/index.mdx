@@ -2,14 +2,14 @@
 title: "The curator seat is earned, on-chain"
 sidebarTitle: "Introduction"
 description: "Oorka is a Uniswap v4 hook where curators compete on real fees and the winner runs the vault. No vote, no trust."
-keywords: ["Uniswap v4", "hook", "curated liquidity", "vault", "Reactive Network", "Unichain"]
+keywords: ["Uniswap v4", "hook", "liquidity vault", "vault", "Reactive Network", "Unichain"]
 ---
 
 <img src="/images/hero.jpg" alt="Oorka landing page: The curator seat is earned, on-chain." className="rounded-xl" />
 
 Oorka is a Uniswap v4 hook that turns the manager seat of a liquidity vault into a competition that settles itself. Any challenger can post a bond and declare a price range. The hook measures what that range **would have earned** on the pool's real swaps, compares it with the current seat holder every epoch, and hands over the seat, and the vault's real liquidity, to whoever keeps winning.
 
-Built for the **UHI11 Hookathon**, theme *Active Management & Curated Liquidity*. It covers three of the theme's directions in one system: curated LP networks, forward-testing of strategies, and automatic strategy migration.
+One system does three jobs that usually need three products and a governance forum: it curates strategists, forward-tests their strategies on live flow, and migrates capital to whoever is winning.
 
 ## The problem
 
@@ -48,7 +48,7 @@ flowchart LR
 
 | | |
 |---|---|
-| **46 tests + 5 invariants** | Unit, fuzz, stateful invariant and Reactive keeper suites, all green in CI |
+| **61 tests + 5 invariants** | Unit, fuzz, stateful invariant, Reactive keeper and Pulse suites, all green in CI |
 | **0** | Oracles, owners, admin keys or off-chain services in the hook |
 | **1e9** | Liquidity per probe position: dust, but enough to make v4 track fees at those ticks |
 | **10%** | Seat holder's cut, paid only on growth above the benchmark and high-water mark |

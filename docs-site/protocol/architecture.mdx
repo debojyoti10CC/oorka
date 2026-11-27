@@ -9,7 +9,8 @@ Oorka is three contracts and an app. The hook does all the economics; the two Re
 flowchart TB
     subgraph LASNA["Reactive Lasna"]
         SYS["System contract<br/>0x8888…8888"]
-        RX["OorkaReactive<br/>CRON subscriber"]
+        RX["OorkaReactive<br/>CRON fallback"]
+        PU["OorkaPulse<br/>pool events"]
     end
     subgraph UNI["Unichain Sepolia"]
         PROXY["Callback proxy"]
@@ -26,6 +27,9 @@ flowchart TB
     MKT["Demo market (GitHub Action)"]
 
     SYS -- "Cron1000 log" --> RX
+    PM -. "Swap log" .-> PU
+    HOOK -. "EpochSettled · VaultMoveDeferred" .-> PU
+    PU -- "requestCallbackV_1_0" --> SYS
     RX -- "requestCallbackV_1_0" --> SYS
     SYS -. "cross-chain callback" .-> PROXY
     PROXY -- "poke()" --> KEEP
@@ -39,7 +43,7 @@ flowchart TB
     classDef hook fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b
     classDef rx fill:#f5f3ff,stroke:#a78bfa,color:#1e1b4b
     class REG,VAULT,PRICE,BENCH hook
-    class SYS,RX,PROXY,KEEP rx
+    class SYS,RX,PU,PROXY,KEEP rx
 ```
 
 ## Components
@@ -53,6 +57,9 @@ flowchart TB
   </Accordion>
   <Accordion title="OorkaReactive" icon="radio">
     Lives on Reactive Lasna. Subscribes to a built-in CRON topic and, every N ticks, asks the network to call the keeper on Unichain.
+  </Accordion>
+  <Accordion title="OorkaPulse" icon="zap">
+    Lives on Reactive Lasna. Subscribes to the pool's `Swap` events and the hook's settlement events. The first swap after an epoch ends triggers a keeper callback within seconds; a deferred vault move is finished on the next swap. See [Oorka Pulse](/keeper/pulse).
   </Accordion>
   <Accordion title="OorkaKeeper" icon="timer">
     Lives on Unichain next to the hook. Accepts calls only from the Reactive callback proxy, and only when the network-injected sender is our own reactive contract. Settles the epoch if it has ended.

@@ -107,7 +107,7 @@ function Shell() {
       </div>
       <footer className="site-foot">
         <div className="site-foot-inner">
-          <span>Oorka · UHI11 Hookathon · Active Management &amp; Curated Liquidity</span>
+          <span>Oorka · The curator seat, earned on-chain</span>
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             Source
           </a>

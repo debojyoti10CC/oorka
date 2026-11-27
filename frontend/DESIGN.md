@@ -8,7 +8,7 @@ Foundations are adapted from the Stick It Up token set (stickitupx.com), applied
 
 ## 1. Context and goals
 
-- **Audience:** hookathon judges, developers and LPs. They are technical, they skim, and they verify claims.
+- **Audience:** LPs, strategists and developers. They are technical, they skim, and they verify claims.
 - **Surfaces:** a marketing-style landing page, a dense real-time dashboard, and a long-form docs page.
 - **Goals:**
   1. Every number on screen must be readable and traceable to the chain.

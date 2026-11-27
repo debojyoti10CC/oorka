@@ -3,7 +3,12 @@ title: "Reactive keeper"
 description: "How epochs settle on time with nobody watching, using Reactive Network CRON."
 ---
 
-`settleEpoch()` is permissionless, but somebody still has to call it. Oorka removes that somebody with two small contracts on two chains.
+`settleEpoch()` is permissionless, but somebody still has to call it. Oorka removes that somebody with Reactive Network, in two layers:
+
+- **[Oorka Pulse](/keeper/pulse)** reacts to the pool's own swaps and settles within seconds of an epoch ending.
+- **The CRON keeper** below wakes up on a timer and settles whatever Pulse hasn't, so a quiet pool still settles.
+
+This page covers the CRON keeper.
 
 ```mermaid
 flowchart LR
