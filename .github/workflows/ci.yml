@@ -37,6 +37,7 @@ jobs:
             contracts/out/OorkaHook.sol/OorkaHook.json
             contracts/out/OorkaKeeper.sol/OorkaKeeper.json
             contracts/out/OorkaReactive.sol/OorkaReactive.json
+            contracts/out/OorkaPulse.sol/OorkaPulse.json
             contracts/out/PoolSwapTest.sol/PoolSwapTest.json
             contracts/out/PoolModifyLiquidityTest.sol/PoolModifyLiquidityTest.json
             contracts/out/MockERC20.sol/MockERC20.json
