@@ -1,0 +1,29 @@
+---
+title: "CI and workflows"
+description: "The three GitHub Actions workflows and what they produce."
+---
+
+```mermaid
+flowchart LR
+    P["push to main"] --> CI["ci.yml<br/>forge build --sizes<br/>forge test"]
+    P --> PG["pages.yml<br/>vite build --mode unichain"]
+    CI --> ART["artifact: contracts-out"]
+    ART --> DEP["deploy-*.mjs scripts"]
+    PG --> GH["GitHub Pages"]
+    CRON["cron :07 :22 :37 :52"] --> MK["market.yml<br/>node scripts/market.mjs"]
+    MK --> POOL["live pool swaps"]
+```
+
+| Workflow | Trigger | Does |
+|---|---|---|
+| `ci.yml` | push, pull request | Installs Foundry and dependencies, builds with sizes, runs every test, uploads `contracts-out` |
+| `pages.yml` | push to main | Builds the frontend in testnet mode with base `/oorka/` and deploys to GitHub Pages |
+| `market.yml` | cron four times an hour, manual | Runs the demo trader with `TRADER_KEY` |
+
+## Why CI builds the contracts
+
+The development machine can't run Foundry binaries, so CI is the build system. Deploy scripts are plain Node + viem and read bytecode from the `contracts-out` artifact:
+
+```bash
+gh run download -R debojyoti10CC/oorka -n contracts-out -D ci-out
+```

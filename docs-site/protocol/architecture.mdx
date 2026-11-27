@@ -1,0 +1,104 @@
+---
+title: "Architecture"
+description: "How OorkaHook, the v4 PoolManager, the Reactive keeper and the app fit together."
+---
+
+Oorka is three contracts and an app. The hook does all the economics; the two Reactive contracts only add liveness.
+
+```mermaid
+flowchart TB
+    subgraph LASNA["Reactive Lasna"]
+        SYS["System contract<br/>0x8888…8888"]
+        RX["OorkaReactive<br/>CRON subscriber"]
+    end
+    subgraph UNI["Unichain Sepolia"]
+        PROXY["Callback proxy"]
+        KEEP["OorkaKeeper"]
+        subgraph HOOK["OorkaHook"]
+            REG["Curator registry<br/>paper NAVs · streaks · bonds"]
+            VAULT["Vault<br/>ERC20 shares (oLP)"]
+            PRICE["Price feeds from the pool<br/>block-open ref · epoch TWAP"]
+            BENCH["Benchmark"]
+        end
+        PM["v4 PoolManager<br/>probe + vault positions"]
+    end
+    APP["Web app (GitHub Pages)"]
+    MKT["Demo market (GitHub Action)"]
+
+    SYS -- "Cron1000 log" --> RX
+    RX -- "requestCallbackV_1_0" --> SYS
+    SYS -. "cross-chain callback" .-> PROXY
+    PROXY -- "poke()" --> KEEP
+    KEEP -- "settleEpoch()" --> HOOK
+    HOOK <-- "unlock · modifyLiquidity · getFeeGrowthInside" --> PM
+    PM -- "beforeSwap · beforeDonate" --> HOOK
+    APP -- "reads + wallet writes" --> HOOK
+    APP -- "swaps" --> PM
+    MKT -- "swaps" --> PM
+
+    classDef hook fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b
+    classDef rx fill:#f5f3ff,stroke:#a78bfa,color:#1e1b4b
+    class REG,VAULT,PRICE,BENCH hook
+    class SYS,RX,PROXY,KEEP rx
+```
+
+## Components
+
+<AccordionGroup>
+  <Accordion title="OorkaHook" icon="anchor">
+    One contract that is simultaneously the v4 hook, the vault (an ERC20 share token called `oLP`) and the curator registry. It owns every position it creates in the PoolManager and separates them by salt. 1,028 lines, 24,358 bytes of runtime code, just under the 24,576-byte limit.
+  </Accordion>
+  <Accordion title="v4 PoolManager" icon="database">
+    The standard Uniswap v4 singleton. Oorka relies on three things it already provides: salted positions, `getFeeGrowthInside` for any initialised range (through `StateLibrary`), and the unlock callback for atomic liquidity changes.
+  </Accordion>
+  <Accordion title="OorkaReactive" icon="radio">
+    Lives on Reactive Lasna. Subscribes to a built-in CRON topic and, every N ticks, asks the network to call the keeper on Unichain.
+  </Accordion>
+  <Accordion title="OorkaKeeper" icon="timer">
+    Lives on Unichain next to the hook. Accepts calls only from the Reactive callback proxy, and only when the network-injected sender is our own reactive contract. Settles the epoch if it has ended.
+  </Accordion>
+  <Accordion title="Web app" icon="monitor">
+    React + viem on GitHub Pages. Landing page, Arena, Vault, Curate, Swap and Docs. Reads history from the Blockscout logs API and new blocks over RPC.
+  </Accordion>
+  <Accordion title="Demo market" icon="activity">
+    A scheduled GitHub Action that trades the public pool so the competition has real fee growth to score. It never settles.
+  </Accordion>
+</AccordionGroup>
+
+## Hook permissions
+
+The hook address is mined so its low bits encode exactly these flags:
+
+| Permission | Why |
+|---|---|
+| `afterInitialize` | Bind the hook to exactly one pool (`PoolAlreadySet` on a second). |
+| `beforeSwap` | On the first swap of each block, snapshot the block-open price and extend the time-weighted tick accumulator. Returns a zero delta and no fee override. |
+| `beforeDonate` | Revert every donation (`DonationsDisabled`), which would otherwise add fee growth with no swap. |
+
+The hook never changes swap pricing. Traders pay the pool's normal 0.30% fee.
+
+## Positions inside the PoolManager
+
+```mermaid
+flowchart LR
+    H["OorkaHook<br/>(position owner)"] --> P0["salt = 0<br/>curator 0 probe<br/>1e9 L"]
+    H --> P1["salt = 1<br/>curator 1 probe<br/>1e9 L"]
+    H --> PN["salt = n<br/>… up to 8 curators<br/>+ benchmark"]
+    H --> VV["salt = type(uint256).max<br/>vault liquidity<br/>at the seat holder's range"]
+```
+
+| Salt | Position |
+|---|---|
+| `bytes32(id)` | Curator `id`'s probe: `PROBE_LIQUIDITY = 1e9` at the declared range |
+| `type(uint256).max` | The vault's real liquidity at the seat holder's range |
+
+## Unlock actions
+
+Every liquidity change goes through `poolManager.unlock` and comes back to `unlockCallback` with one of four actions:
+
+| Action | Triggered by | Effect |
+|---|---|---|
+| `MOVE_PROBE` | `register`, `declareRange`, `exit`, `registerBenchmark` | Remove the old probe, add the new one; dust paid or refunded to the curator |
+| `MOVE_VAULT` | seat holder's `declareRange`, takeover, `compound` | Pull vault liquidity, collect fees, redeploy at the seat holder's range |
+| `DEPOSIT` | `deposit` | Add liquidity at the vault range, mint shares, refund what doesn't fit |
+| `WITHDRAW` | `withdraw` | Burn shares, remove pro-rata liquidity plus idle balances |

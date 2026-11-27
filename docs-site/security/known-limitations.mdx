@@ -1,0 +1,36 @@
+---
+title: "Known limitations"
+description: "What Oorka doesn't solve yet, said out loud, and how a production version would."
+---
+
+<Warning>Oorka is a hackathon build running on testnets with test tokens. It has not been audited.</Warning>
+
+## Wash trading
+
+A curator can trade back and forth through their own range to raise its fee growth. Unlike a donation this is not free:
+
+- every trade pays the 0.30% swap fee plus price impact;
+- the fees go to **all** real liquidity in that range, including the vault if it overlaps;
+- every other range overlapping theirs is credited too.
+
+**Production fix:** cap per-epoch fee credit per curator, or weight fee growth by the number of distinct swappers.
+
+## Unmatched side on migration
+
+When the vault moves to a range with a different token ratio, the excess stays idle in the hook until `compound()` can place it. A production version would rebalance with a swap during migration.
+
+## One vault per pool
+
+Each hook serves one pool and one vault. Several vaults with different risk mandates could read the same leaderboard.
+
+## Contract size
+
+`OorkaHook` is 24,358 bytes against the 24,576-byte limit. New features need a library split first.
+
+## Testnet operations
+
+| Dependency | Risk | Mitigation |
+|---|---|---|
+| Reactive lREACT balance | Ticks stop when funds run out | Top up before it runs dry; `settleEpoch()` stays permissionless |
+| GitHub Actions cron | Scheduled runs can be delayed or dropped | Off-peak cron minutes; manual dispatch |
+| Public RPCs | Rate limits | Frontend reads history from Blockscout and polls in small chunks |

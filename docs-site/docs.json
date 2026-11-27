@@ -1,0 +1,187 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "palm",
+  "name": "Oorka",
+  "description": "A Uniswap v4 hook where the curator seat is earned on-chain: curators compete on real fees and the winner runs the vault.",
+  "colors": {
+    "primary": "#7C3AED",
+    "light": "#A78BFA",
+    "dark": "#6D28D9"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "/"
+  },
+  "favicon": "/favicon.svg",
+  "fonts": {
+    "family": "Inter"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "appearance": {
+    "default": "system",
+    "strict": false
+  },
+  "background": {
+    "decoration": "gradient",
+    "color": {
+      "light": "#FFFFFF",
+      "dark": "#0E0C14"
+    }
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": {
+      "theme": {
+        "light": "github-light",
+        "dark": "github-dark"
+      }
+    }
+  },
+  "banner": {
+    "content": "Live on Unichain Sepolia: the hook settles every 15-minute epoch on its own through a Reactive Network keeper. [Open the arena](https://debojyoti10cc.github.io/oorka/#/arena)",
+    "dismissible": true
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude", "cursor"]
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "search": {
+    "prompt": "Search Oorka docs..."
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/debojyoti10CC/oorka"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open the app",
+      "href": "https://debojyoti10cc.github.io/oorka/"
+    }
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Live app",
+          "icon": "monitor",
+          "href": "https://debojyoti10cc.github.io/oorka/"
+        },
+        {
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/debojyoti10CC/oorka"
+        },
+        {
+          "anchor": "Hook on Uniscan",
+          "icon": "search",
+          "href": "https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0"
+        }
+      ]
+    },
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "index",
+              "getting-started/quickstart",
+              "getting-started/live-deployment",
+              "getting-started/user-guide"
+            ]
+          },
+          {
+            "group": "Protocol",
+            "pages": [
+              "protocol/architecture",
+              "protocol/epoch-lifecycle",
+              "protocol/probes",
+              "protocol/paper-nav",
+              "protocol/settlement",
+              "protocol/takeover-and-vault",
+              "protocol/benchmark-and-fees"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/threat-model",
+              "security/price-integrity",
+              "security/known-limitations"
+            ]
+          },
+          {
+            "group": "Reactive keeper",
+            "pages": [
+              "keeper/overview",
+              "keeper/callback-flow",
+              "keeper/deploy",
+              "keeper/operations"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contracts",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "contracts/overview",
+              "contracts/oorka-hook",
+              "contracts/events-and-errors",
+              "contracts/configuration",
+              "contracts/oorka-reactive",
+              "contracts/oorka-keeper",
+              "contracts/addresses"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Build & run",
+        "groups": [
+          {
+            "group": "App",
+            "pages": [
+              "app/overview",
+              "app/demo-market"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/repository",
+              "development/local-setup",
+              "development/testing",
+              "development/ci",
+              "development/deploying"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/faq",
+              "resources/glossary",
+              "resources/credits"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/debojyoti10CC/oorka"
+    }
+  }
+}

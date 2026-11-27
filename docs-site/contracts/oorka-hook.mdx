@@ -1,0 +1,114 @@
+---
+title: "OorkaHook"
+description: "Function reference for the hook, the vault and the curator registry."
+---
+
+`OorkaHook` inherits solmate `ERC20("Oorka Vault Share", "oLP", 18)` and implements `IHooks` and `IUnlockCallback`.
+
+```solidity
+constructor(IPoolManager _poolManager, Config memory _config)
+```
+
+The hook must be deployed at an address whose flag bits equal `AFTER_INITIALIZE | BEFORE_SWAP | BEFORE_DONATE`; the constructor validates this.
+
+## Curator actions
+
+<ResponseField name="register(string name, int24 lower, int24 upper, uint256 bond) → uint256 id" type="external">
+  Enter the competition. Pulls `bond` tUSD (token1) plus probe dust from the caller. Reuses an exited slot if one exists. The first curator ever registered becomes the seat holder and the vault is placed at their range.
+
+  Reverts: `BadRange`, `BondTooSmall`, `TooManyCurators`. Emits `CuratorRegistered`.
+</ResponseField>
+
+<ResponseField name="declareRange(uint256 id, int24 lower, int24 upper)" type="external">
+  Move your range. Charges `switchCostBps` on paper NAV and re-snapshots fee growth. If `id` is the seat holder, the vault moves too and the deviation guard applies.
+
+  Reverts: `Inactive`, `NotCuratorOwner`, `BadRange`, `PriceDeviation`. Emits `RangeDeclared`, and `VaultMoved` for the seat holder.
+</ResponseField>
+
+<ResponseField name="exit(uint256 id)" type="external">
+  Remove your probe and get your bond back. The seat holder cannot exit.
+
+  Reverts: `Inactive`, `NotCuratorOwner`, `IsIncumbent`. Emits `CuratorExited`.
+</ResponseField>
+
+<ResponseField name="registerBenchmark(string name, int24 lower, int24 upper) → uint256 id" type="external">
+  Create the passive benchmark. Once per hook, anyone, no bond. Caller pays probe dust.
+
+  Reverts: `BenchmarkExists`, `BadRange`. Emits `BenchmarkRegistered`.
+</ResponseField>
+
+## Settlement
+
+<ResponseField name="settleEpoch()" type="external">
+  Close the epoch: score every portfolio at the epoch TWAP, report vault vs benchmark, charge the performance fee, update streaks, take over if earned, sync the vault, roll baselines. See [Epoch lifecycle](/protocol/epoch-lifecycle).
+
+  Reverts: `NoIncumbent`, `EpochNotOver`. Emits `BenchmarkScored`, `PerformanceFee`, `Scored`, `EpochSettled`, `Takeover`, `VaultMoved` or `VaultMoveDeferred`.
+</ResponseField>
+
+<ResponseField name="compound()" type="external">
+  Collect vault fees, reinvest idle balances at the seat holder's range, finish a deferred move. Permissionless.
+
+  Reverts: `NoIncumbent`, `PriceDeviation`.
+</ResponseField>
+
+## Vault
+
+<ResponseField name="deposit(uint256 amount0Max, uint256 amount1Max, uint256 minShares) → uint256 shares" type="external">
+  Add liquidity at the vault range; unused amounts stay with the caller. Shares priced at the block-open share price.
+
+  Reverts: `NoIncumbent`, `ZeroAmount`, `PriceDeviation`, `Slippage`. Emits `Deposited`.
+</ResponseField>
+
+<ResponseField name="withdraw(uint256 shares, uint256 min0, uint256 min1) → (uint256 amount0, uint256 amount1)" type="external">
+  Burn shares for a pro-rata slice of the vault position and idle balances.
+
+  Reverts: `ZeroAmount`, `PriceDeviation`, `Slippage`. Emits `Withdrawn`.
+</ResponseField>
+
+## Views
+
+| Function | Returns |
+|---|---|
+| `getCurators() → CuratorView[]` | Every slot with live NAV, growth, bond, streak and flags |
+| `curatorCount()` | Length of the curator array (≤ 9) |
+| `curatorNav(id)` | Live paper NAV of one curator |
+| `vaultNav()` | Vault value in tUSD at the block-open price, fees included |
+| `vaultState()` | `(lower, upper, liquidity, idle0, idle1, nav, supply)` |
+| `benchmarkReport()` | `(vaultSinceStart, vaultThisEpoch, benchSinceStart, benchThisEpoch)` as WAD growth |
+| `epochInfo()` | `(current, start, end, now)` |
+| `epochAverageTick()` | Seconds-weighted average block-open tick so far this epoch |
+| `settleSqrtPrice()` | Price `settleEpoch` scores at |
+| `refSqrtPrice()` | Block-open price for this block |
+| `incumbentId`, `hasIncumbent`, `epoch`, `epochStart`, `config`, `poolKey`, `poolId` | Public state |
+| `vaultLower`, `vaultUpper`, `vaultLiquidity`, `idle0`, `idle1` | Vault position |
+| `vaultStartSharePrice`, `vaultEpochStartSharePrice`, `highWaterSharePrice` | Fee baselines |
+
+### CuratorView
+
+```solidity
+struct CuratorView {
+    uint256 id;
+    address owner;
+    string name;
+    int24 lower;
+    int24 upper;
+    uint256 nav;            // live paper NAV, tUSD (WAD)
+    uint256 epochStartNav;
+    uint256 epochGrowthWad; // nav / epochStartNav
+    uint256 bond;
+    uint32 streak;
+    uint32 joinedEpoch;
+    bool active;
+    bool incumbent;
+    bool benchmark;
+}
+```
+
+## Hook callbacks
+
+| Callback | Behaviour |
+|---|---|
+| `afterInitialize` | Binds `poolKey` / `poolId`. `PoolAlreadySet` on a second pool, `WrongHook` if the key names another hook. |
+| `beforeSwap` | First swap per block: store block-open price, extend tick accumulator. Zero delta, no fee override. |
+| `beforeDonate` | Always reverts `DonationsDisabled`. |
+| `unlockCallback` | Executes `MOVE_PROBE`, `MOVE_VAULT`, `DEPOSIT` or `WITHDRAW`. Only the PoolManager may call it. |

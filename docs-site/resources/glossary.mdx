@@ -1,0 +1,27 @@
+---
+title: "Glossary"
+description: "Terms used across Oorka."
+---
+
+| Term | Meaning |
+|---|---|
+| **Seat holder** (incumbent) | The curator whose range the vault's real liquidity sits in |
+| **Challenger** | Any other active curator |
+| **Probe** | 1e9-liquidity position at a curator's range that makes v4 track fee growth there |
+| **Paper portfolio** | A curator's virtual 1,000 tUSD position, scored on real fees and price |
+| **Paper NAV** | Current value of a paper portfolio in tUSD |
+| **vL** | Virtual liquidity of a paper portfolio |
+| **Epoch** | Scoring period (`epochLength`) |
+| **Streak** | Consecutive epochs a challenger beat the seat holder by `marginBps` |
+| **Takeover** | Seat changes hands after `winStreak` wins |
+| **Slash** | Share of a dethroned seat holder's bond paid to depositors |
+| **Benchmark** | Fixed passive range the vault is compared to; never competes |
+| **High-water mark** | Best share price ever reached at a settlement; fees only above it |
+| **Block-open price** | Pool price before the first swap of the block |
+| **Epoch TWAP** | Seconds-weighted average of block-open ticks over the epoch |
+| **Deferred move** | Vault migration postponed because the price was being pushed |
+| **oLP** | Vault share token |
+| **CRON** | Reactive Network's built-in periodic events |
+| **Callback proxy** | Reactive contract on the destination chain that delivers callbacks |
+| **lREACT** | Lasna testnet REACT, pays for reactive transactions |
+| **WAD** | 1e18 fixed point |

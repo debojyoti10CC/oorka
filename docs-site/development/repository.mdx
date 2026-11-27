@@ -1,0 +1,45 @@
+---
+title: "Repository"
+description: "Where everything lives in the Oorka repo."
+---
+
+```text
+oorka/
+├── contracts/
+│   ├── src/OorkaHook.sol             hook + vault + curator registry
+│   ├── src/reactive/OorkaReactive.sol  CRON subscriber (Reactive Lasna)
+│   ├── src/reactive/OorkaKeeper.sol    callback receiver (Unichain)
+│   ├── test/OorkaHook.t.sol          31 unit + 2 fuzz tests
+│   ├── test/OorkaInvariant.t.sol     handler + 5 invariants
+│   ├── test/OorkaReactive.t.sol      13 keeper tests
+│   ├── script/DeployLocal.s.sol      local world with seeded curators
+│   ├── script/DeployTestnet.s.sol    deploy against a real PoolManager
+│   └── foundry.toml
+├── frontend/
+│   ├── src/                          React app (Landing, App, Lanes, Swap, Docs…)
+│   ├── src/abi/                      ABIs from CI artifacts
+│   ├── public/deployments.1301.json  live addresses
+│   └── scripts/
+│       ├── deploy-testnet.mjs        hook, tokens, pool, seed curators
+│       ├── deploy-reactive.mjs       reactive + keeper + setKeeper
+│       ├── deploy-local.mjs          Hardhat devnet world
+│       └── market.mjs                demo trader
+├── local-chain/                      Hardhat devnet for Node-only setups
+├── docs-site/                        these docs (Mintlify)
+├── docs/                             README images and the project report
+├── .github/workflows/                ci.yml · pages.yml · market.yml
+├── demo.sh                           one-command local demo
+└── README.md
+```
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Contracts | Solidity 0.8.26, Uniswap v4-core / v4-periphery, solmate |
+| Testing | Foundry: unit, fuzz, stateful invariants |
+| Automation | Reactive Network (Lasna) CRON + callbacks |
+| Frontend | React 18, Vite, viem |
+| Hosting | GitHub Pages, Vercel |
+| Indexing | Blockscout logs API + RPC polling |
+| Docs | Mintlify |

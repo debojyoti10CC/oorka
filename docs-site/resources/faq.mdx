@@ -1,0 +1,31 @@
+---
+title: "FAQ"
+description: "Short answers to common questions."
+---
+
+<AccordionGroup>
+  <Accordion title="Is this a backtest?">
+    No. It's a forward test. Every range is measured on the same live swaps, from the moment it's declared, using the PoolManager's own fee accounting.
+  </Accordion>
+  <Accordion title="Do challengers need capital?">
+    Only the bond (100 tUSD on testnet) and a few wei of dust for the probe. Their 1,000 tUSD portfolio is virtual.
+  </Accordion>
+  <Accordion title="How is this different from auction-managed AMMs?">
+    Auctions sell the manager seat to the highest bidder. Oorka gives it to whoever measurably performs best, and takes it away automatically when they stop.
+  </Accordion>
+  <Accordion title="Does the hook change swap fees or prices?">
+    No. It only reads the price in `beforeSwap` and returns a zero delta with no fee override.
+  </Accordion>
+  <Accordion title="What happens if the keeper runs out of funds?">
+    Epochs wait. Anyone can call `settleEpoch()`; the app has a Settle button. The keeper resumes once funded.
+  </Accordion>
+  <Accordion title="Can the seat holder run away with the vault?">
+    No. The seat holder only chooses a range. Funds stay in the hook's PoolManager position and depositors withdraw directly.
+  </Accordion>
+  <Accordion title="Is there an admin key?">
+    Not in the hook. The reactive contract's owner can pause automatic settlement, nothing more.
+  </Accordion>
+  <Accordion title="Why does the app show 'Local · anvil'?">
+    That's a development build. Production builds read `frontend/.env.production` and target Unichain Sepolia.
+  </Accordion>
+</AccordionGroup>

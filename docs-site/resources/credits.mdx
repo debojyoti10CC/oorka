@@ -1,0 +1,15 @@
+---
+title: "Credits"
+description: "What Oorka builds on."
+---
+
+The hook, vault, scoring, benchmark, settlement price and keeper were written for this project. They build on:
+
+- **Uniswap v4** ([v4-core](https://github.com/Uniswap/v4-core), [v4-periphery](https://github.com/Uniswap/v4-periphery)): `PoolManager`, `StateLibrary`, `TickMath`, `SqrtPriceMath`, `LiquidityAmounts`, and test helpers `Deployers`, `PoolSwapTest`, `PoolModifyLiquidityTest`.
+- **solmate**: `ERC20` for vault shares and `MockERC20` for test tokens.
+- **Reactive Network**: system contract and callback proxy interfaces follow [reactive-lib-omni](https://github.com/Reactive-Network/reactive-lib-omni), implemented inline; the CRON pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
+- **Foundry**, **viem**, **React**, **Vite**.
+- **React Bits** [`<Dither />`](https://reactbits.dev) for the landing hero background.
+- **Mintlify** for these docs.
+
+Built for the **UHI11 Hookathon** (Uniswap Hook Incubator), theme *Active Management & Curated Liquidity*. Partner integration: **Reactive Network**.

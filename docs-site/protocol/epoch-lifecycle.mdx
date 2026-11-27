@@ -1,0 +1,96 @@
+---
+title: "Epoch lifecycle"
+description: "Everything that happens in one epoch, from declaring a range to the vault moving."
+---
+
+Time in Oorka is cut into epochs (`epochLength`, 15 minutes on testnet). Curators accrue paper results during an epoch; `settleEpoch()` closes it, scores everyone and possibly hands over the seat.
+
+## One epoch, end to end
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Challenger
+    participant H as OorkaHook
+    participant PM as PoolManager
+    actor T as Traders
+    participant K as Keeper
+
+    C->>H: register(name, lower, upper, bond)
+    H->>PM: add 1e9 probe at [lower, upper]
+    H->>H: vL so paper NAV = 1,000 tUSD, snapshot feeGrowthInside
+    loop During the epoch
+        T->>PM: swap
+        PM->>H: beforeSwap (first swap in block)
+        H->>H: store block-open price, extend tick accumulator
+        PM->>PM: fees accrue to in-range liquidity (incl. probes)
+    end
+    K->>H: settleEpoch() after epochStart + epochLength
+    H->>H: price = epoch TWAP of block-open ticks
+    H->>H: mark every paper NAV, compute growth
+    H->>H: vault vs benchmark, performance fee
+    H->>H: streaks, maybe takeover + slash
+    H->>PM: move vault (if the price is honest)
+    H->>H: roll baselines, epoch += 1
+```
+
+## Settlement logic
+
+```mermaid
+flowchart TB
+    A["settleEpoch()"] --> B{"Has a seat holder?"}
+    B -- "no" --> X1["revert NoIncumbent"]
+    B -- "yes" --> C{"epochStart + epochLength reached?"}
+    C -- "no" --> X2["revert EpochNotOver"]
+    C -- "yes" --> D["p = settleSqrtPrice()<br/>(epoch TWAP)"]
+    D --> E["For every active portfolio:<br/>collect paper fees, growth = NAV / epochStartNav"]
+    E --> F["Emit BenchmarkScored<br/>charge performance fee to seat holder"]
+    F --> G["bar = seat growth × (1 + marginBps)"]
+    G --> H{"For each challenger:<br/>joined before this epoch<br/>AND growth > bar?"}
+    H -- "yes" --> I["streak += 1"]
+    H -- "no" --> J["streak = 0"]
+    I --> K{"streak ≥ winStreak?"}
+    K -- "yes" --> L["candidate (best growth wins)"]
+    K -- "no" --> M["emit Scored"]
+    J --> M
+    L --> N["Takeover: slash old bond to idle1,<br/>reset all streaks, new incumbentId"]
+    M --> O["_syncVault()"]
+    N --> O
+    O --> P{"|spot − ref| ≤ maxTickDeviation?"}
+    P -- "yes" --> Q["Move vault to seat holder's range"]
+    P -- "no" --> R["emit VaultMoveDeferred"]
+    Q --> S["Roll: epochStartNav = NAV, share-price baselines,<br/>high-water mark, epoch += 1"]
+    R --> S
+```
+
+## Rules that matter
+
+<CardGroup cols={2}>
+  <Card title="Whole-epoch presence" icon="calendar-check">
+    A challenger only gains a win if `joinedEpoch < epoch`. Joining mid-epoch never counts.
+  </Card>
+  <Card title="Margin" icon="percent">
+    The challenger must beat the seat holder's growth by `marginBps` (0.1%), not just tie.
+  </Card>
+  <Card title="Streak" icon="flame">
+    `winStreak` (2) consecutive wins. One losing epoch resets the streak to zero.
+  </Card>
+  <Card title="Clean slate" icon="eraser">
+    On takeover every streak resets, including the new seat holder's challengers.
+  </Card>
+</CardGroup>
+
+## Streak states for a challenger
+
+```mermaid
+stateDiagram-v2
+    [*] --> Qualifying: register()
+    Qualifying --> Zero: first full epoch starts
+    Zero --> One: beat bar
+    Zero --> Zero: miss bar
+    One --> Zero: miss bar
+    One --> SeatHolder: beat bar (streak = 2, best growth)
+    SeatHolder --> Zero: dethroned by a challenger
+    Zero --> [*]: exit()
+    One --> [*]: exit()
+```

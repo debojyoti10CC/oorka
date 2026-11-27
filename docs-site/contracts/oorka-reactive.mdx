@@ -1,0 +1,53 @@
+---
+title: "OorkaReactive"
+description: "The CRON subscriber that runs on Reactive Network."
+---
+
+Written for Reactive's current contract model, with interfaces declared inline (no reactive-lib dependency) to stay on solc 0.8.26.
+
+```solidity
+constructor(uint256 _cronTopic, uint256 _destinationChainId, uint256 _ticksPerPoke) payable
+```
+
+Subscribes to `_cronTopic` on construction when the system contract (`0x8888888888888888888888888888888888888888`) has code, so unit tests elsewhere can deploy it without a VM. `_ticksPerPoke = 0` is treated as 1.
+
+## Functions
+
+<ResponseField name="react(LogRecord log)" type="onlySystem">
+  Called by the system contract for every subscribed log. Returns quietly if the topic doesn't match or no keeper is set. Otherwise increments `ticks` and, every `ticksPerPoke` ticks, calls `requestCallbackV_1_0` with destination chain, keeper, gas limit 3,000,000 and payload `poke(address(0))`. Emits `Poked(tick)`.
+</ResponseField>
+
+<ResponseField name="setKeeper(address keeper)" type="onlyOwner, one-shot">
+  Points callbacks at the keeper. Reverts `KeeperAlreadySet` on a second call: the keeper authenticates this contract immutably, so there's nothing to rotate.
+</ResponseField>
+
+<ResponseField name="setPaused(bool paused)" type="onlyOwner">
+  `true` unsubscribes from CRON. `false` covers debt and resubscribes. Emits `Paused`.
+</ResponseField>
+
+<ResponseField name="pay(uint256 amount)" type="onlySystem">
+  Pays the system contract for reactive transactions.
+</ResponseField>
+
+<ResponseField name="coverDebt()" type="anyone">
+  Pays outstanding debt from the contract's balance, so a third party can fund and restart it.
+</ResponseField>
+
+## LogRecord
+
+```solidity
+struct LogRecord {
+    uint256 chainId;
+    address contractAddress;
+    uint256 topic0;
+    uint256 topic1;
+    uint256 topic2;
+    uint256 topic3;
+    bytes data;
+    uint256 blockNumber;
+    uint256 opCode;
+    uint256 blockHash;
+    uint256 txHash;
+    uint256 logIndex;
+}
+```

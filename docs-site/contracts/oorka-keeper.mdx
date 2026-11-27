@@ -1,0 +1,31 @@
+---
+title: "OorkaKeeper"
+description: "The callback receiver that settles epochs on the hook's chain."
+---
+
+```solidity
+constructor(address _callbackProxy, address _callbackSender, IOorkaHook _hook, bool _compoundOnIdle) payable
+```
+
+| Immutable | Meaning |
+|---|---|
+| `callbackProxy` | Reactive's callback proxy on this chain (Unichain Sepolia: `0x775c9B990ADe401060B78D0e98684eEf8d2466C1`) |
+| `callbackSender` | The `OorkaReactive` address allowed to trigger this keeper |
+| `hook` | The `OorkaHook` to settle |
+| `compoundOnIdle` | Also call `compound()` on idle ticks |
+
+## Functions
+
+<ResponseField name="poke(address sender)" type="onlyProxy">
+  `sender` is overwritten by Reactive Network with the requesting reactive contract. Reverts `CallbackNotAuthorized` unless it equals `callbackSender`. If the epoch has ended: `try settleEpoch()`, emitting `Settled` or `SettleFailed`. Otherwise optionally `try compound()` and emit `Idle(epoch, secondsLeft)`.
+</ResponseField>
+
+<ResponseField name="pay(uint256 amount)" type="onlyProxy">
+  Pays the proxy for callbacks.
+</ResponseField>
+
+<ResponseField name="coverDebt()" type="anyone">
+  Pays the proxy's recorded debt from this contract's ETH balance.
+</ResponseField>
+
+The keeper holds no rights on the hook beyond what any address has.

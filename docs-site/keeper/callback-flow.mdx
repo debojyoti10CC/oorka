@@ -1,0 +1,65 @@
+---
+title: "Callback flow"
+description: "Step by step: from a CRON tick on Reactive Lasna to a settled epoch on Unichain."
+---
+
+```mermaid
+sequenceDiagram
+    autonumber
+    box rgb(237,233,254) Reactive Lasna
+        participant S as System 0x8888…8888
+        participant R as OorkaReactive
+    end
+    box rgb(243,244,246) Unichain Sepolia
+        participant P as Callback proxy
+        participant K as OorkaKeeper
+        participant H as OorkaHook
+    end
+    S->>R: react(LogRecord) for the Cron1000 topic
+    R->>R: topic matches and keeper set?
+    R->>R: ticks += 1, ticks % ticksPerPoke == 0?
+    R->>S: requestCallbackV_1_0(chainId 1301, keeper, 3M gas, poke(address(0)))
+    R-->>R: emit Poked(tick)
+    S-->>P: callback delivered cross-chain
+    Note over S,P: Reactive replaces the first argument with OorkaReactive's address
+    P->>K: poke(OorkaReactive)
+    K->>K: msg.sender == proxy? sender == callbackSender?
+    K->>H: epochInfo()
+    alt now ≥ epoch end
+        K->>H: try settleEpoch()
+        alt success
+            K-->>K: emit Settled(epoch)
+        else revert
+            K-->>K: emit SettleFailed(epoch, reason)
+        end
+    else epoch still running
+        opt compoundOnIdle
+            K->>H: try compound()
+        end
+        K-->>K: emit Idle(epoch, secondsLeft)
+    end
+    P->>K: pay(amount) for the callback
+```
+
+## Authentication, twice
+
+<Steps>
+  <Step title="Who is calling?">
+    `onlyProxy`: `msg.sender` must be the Reactive callback proxy for this chain. Anything else reverts with `NotAuthorized(sender)`.
+  </Step>
+  <Step title="On whose behalf?">
+    The proxy delivers callbacks for every reactive contract on the network. Reactive overwrites the first argument of the payload with the address of the reactive contract that requested it. The keeper checks it equals `callbackSender`, fixed at construction, else `CallbackNotAuthorized(sender, expected)`.
+  </Step>
+</Steps>
+
+## Billing
+
+```mermaid
+flowchart LR
+    R["OorkaReactive<br/>holds lREACT"] -- "pay() / debt" --> S["System contract"]
+    K["OorkaKeeper<br/>holds ETH"] -- "pay() / debt" --> P["Callback proxy"]
+```
+
+- Each reactive transaction is billed to `OorkaReactive` in lREACT (about 0.013 per tick on Lasna).
+- Each callback is billed to `OorkaKeeper` in ETH on Unichain.
+- A contract in debt receives nothing. `coverDebt()` pays outstanding debt from the contract's balance; anyone can call it after funding the contract.

@@ -1,0 +1,34 @@
+---
+title: "Demo market"
+description: "The scheduled trader that keeps the public pool moving so curators have real swaps to be scored on."
+---
+
+A testnet pool with no traders produces no fee growth and no price moves, so nothing would ever win. The demo market fixes that.
+
+| | |
+|---|---|
+| Workflow | [`.github/workflows/market.yml`](https://github.com/debojyoti10CC/oorka/blob/main/.github/workflows/market.yml) |
+| Script | [`frontend/scripts/market.mjs`](https://github.com/debojyoti10CC/oorka/blob/main/frontend/scripts/market.mjs) |
+| Schedule | minutes 7, 22, 37, 52 of every hour, plus manual dispatch |
+| Key | throwaway testnet key in the `TRADER_KEY` repository secret |
+
+## One run
+
+```mermaid
+flowchart TB
+    A["Mint tETH/tUSD if balance < 1M<br/>approve router once"] --> B["target(t) = 3000 · exp(0.035·sin(2πt/8h) + 0.012·sin(2πt/77min))"]
+    B --> C{"|price / target − 1| > 0.1%?"}
+    C -- "yes" --> D["Exact-in swap with sqrtPriceLimit = target<br/>(stops exactly at the target)"]
+    C -- "no" --> E
+    D --> E["2–4 round trips of 5–25 tETH<br/>for fee volume"]
+    E --> F["done (never settles)"]
+```
+
+## Why a wave
+
+- Near the middle of the slow 8-hour wave the price chops inside narrow ranges, so **tight curators** earn the most fees.
+- At the swings the price leaves narrow ranges, so **wide curators** catch up.
+
+That alternation produces real streaks and real takeovers on the live deployment.
+
+<Note>The market never calls `settleEpoch()`. Settlement belongs to the Reactive keeper alone.</Note>

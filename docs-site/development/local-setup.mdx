@@ -1,0 +1,56 @@
+---
+title: "Local setup"
+description: "Run the full Oorka world on your machine."
+---
+
+<Tabs>
+  <Tab title="Foundry">
+    ```bash
+    ./demo.sh
+    ```
+
+    Open `http://localhost:5173`.
+
+    ```mermaid
+    flowchart LR
+        A["anvil"] --> B["PoolManager, tokens, routers"]
+        B --> C["hook at mined CREATE2 address"]
+        C --> D["pool ~3,000 + deep liquidity"]
+        D --> E["seed curators, benchmark, vault"]
+        E --> F["vite dev server"]
+    ```
+  </Tab>
+  <Tab title="Windows / WSL">
+    Run `./demo.sh` inside WSL with Foundry and Node there. Or run `anvil --host 0.0.0.0` and the deploy steps inside WSL, then start the frontend from Windows:
+
+    ```bash
+    cd frontend && npm install && npx vite
+    ```
+
+    WSL forwards `127.0.0.1:8545` to Windows. Override the RPC with `VITE_RPC_URL`.
+  </Tab>
+  <Tab title="Node only">
+    ```bash
+    cd local-chain && npm install && npm run node
+    gh run download -R debojyoti10CC/oorka -n contracts-out -D ../ci-out
+    cd frontend && npm install && node scripts/deploy-local.mjs ../ci-out
+    npx vite --mode hardhat
+    ```
+  </Tab>
+  <Tab title="Against the testnet">
+    ```bash
+    cd frontend && npm install && npx vite --mode unichain
+    ```
+  </Tab>
+</Tabs>
+
+## Environment variables
+
+| Variable | Default (local) | Testnet |
+|---|---|---|
+| `VITE_MODE` | `local` | `wallet` |
+| `VITE_RPC_URL` | `http://127.0.0.1:8545` | `https://sepolia.unichain.org` |
+| `VITE_CHAIN_ID` | `31337` | `1301` |
+| `VITE_EXPLORER` | – | `https://sepolia.uniscan.xyz` |
+| `VITE_DEPLOYMENTS` | `deployments.json` | `deployments.1301.json` |
+| `VITE_DEVNET` | `anvil` | – (`hardhat` for the Hardhat devnet) |

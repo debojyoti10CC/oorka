@@ -1,0 +1,55 @@
+---
+title: "Events and errors"
+description: "Everything OorkaHook emits and every custom error it can revert with."
+---
+
+## Events
+
+| Event | When |
+|---|---|
+| `CuratorRegistered(uint256 indexed id, address indexed owner, string name, int24 lower, int24 upper)` | `register` |
+| `RangeDeclared(uint256 indexed id, int24 lower, int24 upper, uint256 navAfterCost)` | `declareRange` |
+| `CuratorExited(uint256 indexed id)` | `exit` |
+| `BenchmarkRegistered(uint256 indexed id, string name, int24 lower, int24 upper)` | `registerBenchmark` |
+| `BenchmarkScored(uint256 indexed epoch, uint256 vaultGrowthWad, uint256 benchmarkGrowthWad)` | each settlement with a benchmark |
+| `PerformanceFee(uint256 indexed epoch, uint256 indexed curatorId, address indexed to, uint256 shares, uint256 value)` | seat holder beat the hurdle |
+| `Scored(uint256 indexed epoch, uint256 indexed id, uint256 growthWad, uint32 streak)` | each active curator, each settlement |
+| `EpochSettled(uint256 indexed epoch, uint256 incumbentId, uint256 incumbentGrowthWad)` | each settlement |
+| `Takeover(uint256 indexed epoch, uint256 indexed oldId, uint256 indexed newId, uint256 slashed)` | seat changes hands |
+| `VaultMoved(int24 lower, int24 upper, uint128 liquidity)` | vault redeployed |
+| `VaultMoveDeferred(uint256 indexed incumbentId)` | takeover during a price push |
+| `Deposited(address indexed user, uint256 amount0, uint256 amount1, uint256 shares)` | `deposit` |
+| `Withdrawn(address indexed user, uint256 amount0, uint256 amount1, uint256 shares)` | `withdraw` |
+
+Growth values are WAD: `1e18` means flat, `1.0173e18` means +1.73%.
+
+## Errors
+
+| Error | Meaning |
+|---|---|
+| `NotPoolManager` | A hook callback came from something other than the PoolManager |
+| `HookNotImplemented` | A callback the hook doesn't claim was called |
+| `PoolAlreadySet` | The hook is already bound to a pool |
+| `PoolNotSet` | Action before the pool was initialised |
+| `WrongHook` | The pool key names a different hook |
+| `BadRange` | Ticks not aligned to spacing, out of bounds, or `lower >= upper` |
+| `BondTooSmall` | Bond below `minBond` |
+| `TooManyCurators` | `MAX_CURATORS` (8) active already |
+| `NotCuratorOwner` | Caller doesn't own this curator slot |
+| `NotIncumbent` | Action reserved for the seat holder |
+| `IsIncumbent` | The seat holder tried to exit |
+| `NoIncumbent` | No seat holder yet |
+| `EpochNotOver` | `settleEpoch` before `epochStart + epochLength` |
+| `PriceDeviation` | Spot more than `maxTickDeviation` from the block-open price |
+| `ZeroAmount` | Zero deposit or zero shares |
+| `Slippage` | Below `minShares`, `min0` or `min1` |
+| `Inactive` | Curator slot not active |
+| `DonationsDisabled` | Any `donate()` to the pool |
+| `BenchmarkExists` | Benchmark already registered |
+
+## Reactive contracts
+
+| Contract | Events | Errors |
+|---|---|---|
+| `OorkaReactive` | `KeeperSet(address)`, `Poked(uint256 tick)`, `Paused(bool)` | `NotAuthorized(address)`, `KeeperAlreadySet`, `InsufficientFunds(uint256, uint256)`, `TransferFailed` |
+| `OorkaKeeper` | `Settled(uint256 indexed epoch)`, `SettleFailed(uint256 indexed epoch, bytes reason)`, `Compounded()`, `Idle(uint256 indexed epoch, uint256 secondsLeft)` | `NotAuthorized(address)`, `CallbackNotAuthorized(address sender, address expected)`, `InsufficientFunds(uint256, uint256)`, `TransferFailed` |
