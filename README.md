@@ -37,6 +37,28 @@ Curated LP vaults ask depositors to trust a manager. You pick one on marketing, 
 
 The seat holder is scored exactly like everyone else, so the race is apples to apples. Nobody runs it: a **Reactive Network** CRON contract settles every epoch on its own.
 
+```mermaid
+flowchart LR
+    A["Challenger<br/>posts bond + range"] --> B["Hook adds 1e9 probe<br/>at those ticks"]
+    B --> C["Swaps hit the pool<br/>v4 tracks feeGrowthInside"]
+    C --> D{"Epoch ends<br/>settleEpoch()"}
+    D --> E["Mark every paper NAV<br/>at the epoch TWAP"]
+    E --> F{"Beat seat holder<br/>by marginBps?"}
+    F -- "no" --> G["Streak resets"]
+    F -- "yes" --> H{"winStreak<br/>reached?"}
+    H -- "not yet" --> I["Streak +1"]
+    H -- "yes" --> J["Takeover<br/>slash old bond to depositors"]
+    J --> K["Vault liquidity moves<br/>to the winner's range"]
+    G --> C
+    I --> C
+    K --> C
+
+    classDef hook fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b
+    classDef win fill:#dcfce7,stroke:#15803d,color:#14532d
+    class B,E hook
+    class J,K win
+```
+
 ## Why Oorka
 
 <table>
@@ -110,13 +132,31 @@ The seat holder is scored exactly like everyone else, so the race is apples to a
 
 ## Keeper-free settlement (Reactive Network)
 
-```
- Reactive Lasna                                   Unichain Sepolia
-┌──────────────────────┐   CRON tick (~17 min)   ┌─────────────────────┐   settleEpoch()   ┌──────────────┐
-│ OorkaReactive        │ ──────────────────────▶ │ OorkaKeeper         │ ────────────────▶ │ OorkaHook    │
-│ react() ← SYSTEM     │  requestCallbackV_1_0   │ onlyProxy +         │  if epoch ended   │ score, seat, │
-│ every N ticks        │                         │ sender == reactive  │  else emit Idle   │ move vault   │
-└──────────────────────┘                         └─────────────────────┘                   └──────────────┘
+```mermaid
+sequenceDiagram
+    autonumber
+    box rgb(237,233,254) Reactive Lasna
+        participant S as SYSTEM 0x8888…8888
+        participant R as OorkaReactive
+    end
+    box rgb(243,244,246) Unichain Sepolia
+        participant P as Callback proxy
+        participant K as OorkaKeeper
+        participant H as OorkaHook
+    end
+    S->>R: react(Cron1000 log), every ~17 min
+    R->>R: ++ticks, poke due?
+    R->>S: requestCallbackV_1_0(1301, keeper, 3M gas, poke)
+    S-->>P: deliver callback cross-chain
+    P->>K: poke(sender = OorkaReactive)
+    K->>K: require proxy and sender == our reactive
+    alt epoch has ended
+        K->>H: settleEpoch()
+        H-->>K: scores, streaks, maybe takeover
+        K-->>K: emit Settled(epoch)
+    else still running
+        K-->>K: emit Idle(epoch, secondsLeft)
+    end
 ```
 
 - **`OorkaReactive`** subscribes to Reactive's built-in CRON event. The system contract (`0x8888…8888`) calls `react()` on every tick; every `ticksPerPoke` ticks it requests a callback to the hook's chain. An owner switch pauses and resumes the subscription.
@@ -161,6 +201,40 @@ Every CRON tick is billed whether or not anything happens, so pick the longest i
 ## Under the hood
 
 **Hook permissions:** `afterInitialize` (bind to one pool), `beforeSwap` (snapshot the block-open price, build the TWAP) and `beforeDonate` (reject donations). The hook never touches swap pricing, so traders pay normal v4 fees.
+
+```mermaid
+flowchart TB
+    subgraph Users
+        T["Traders / demo market"]
+        D["Depositors"]
+        C["Curators"]
+    end
+    subgraph Hook["OorkaHook"]
+        BS["beforeSwap<br/>block-open price + TWAP"]
+        BD["beforeDonate<br/>always reverts"]
+        REG["Curator registry<br/>paper NAVs, streaks, bonds"]
+        V["Vault<br/>ERC20 shares, perf fee"]
+        BM["Benchmark<br/>fixed passive range"]
+    end
+    subgraph PM["v4 PoolManager"]
+        PR["Probe positions<br/>salt = curator id, 1e9 L"]
+        VP["Vault position<br/>salt = max uint"]
+        FG["feeGrowthInside"]
+    end
+    T -- swap --> PM
+    PM -- hook call --> BS
+    D -- deposit / withdraw --> V
+    C -- register / declareRange --> REG
+    REG -- add or move probe --> PR
+    V -- add or move liquidity --> VP
+    FG -- read via StateLibrary --> REG
+    FG --> BM
+
+    classDef pm fill:#fce7f3,stroke:#db2777,color:#500724
+    classDef hk fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b
+    class PR,VP,FG pm
+    class BS,BD,REG,V,BM hk
+```
 
 **Positions inside the PoolManager**, all owned by the hook and separated by salt:
 
@@ -276,7 +350,27 @@ forge script script/DeployTestnet.s.sol --rpc-url https://sepolia.unichain.org -
 
 **What to try:** hit **Trade in a range** a few times and the tight curator out-earns the wide one on fees. Settle a few epochs and watch the seat change hands and the vault bar slide to the new range. Then **Pump**: the price leaves the tight range, its lane goes hatched, and the wide range leads. The market decides who should manage; the hook works it out alone.
 
-<p align="center"><img src="docs/takeover.png" alt="Takeover" width="49%"> <img src="docs/pump.png" alt="Pump" width="49%"></p>
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Ranging: price near 3,000
+    Ranging --> Ranging: Trade in a range
+    Ranging --> TightLeads: tight range earns most fees
+    TightLeads --> TightSeat: 2 winning epochs
+    TightSeat --> Trending: Pump or Dump
+    Trending --> WideLeads: price leaves the tight range
+    WideLeads --> WideSeat: 2 winning epochs
+    WideSeat --> Ranging: price settles back
+
+    note right of TightSeat
+        vault moves to the tight range
+        old seat holder slashed
+    end note
+    note right of WideSeat
+        no vote: the hook
+        hands the seat back
+    end note
+```
 
 ---
 
