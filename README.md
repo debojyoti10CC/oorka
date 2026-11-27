@@ -16,7 +16,7 @@ A Uniswap v4 hook where the right to manage a vault's liquidity is won, and kept
 ![Reactive Network](https://img.shields.io/badge/keeper-Reactive%20Network-171717)
 ![Tests](https://img.shields.io/badge/tests-46%20%2B%205%20invariants-15803d)
 
-[**Live app**](https://debojyoti10cc.github.io/oorka/) · [**Arena**](https://debojyoti10cc.github.io/oorka/#/arena) · [**Docs**](https://debojyoti10cc.github.io/oorka/#/docs) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
+[**Live app**](https://oorka.djyo.tech) · [**Arena**](https://oorka.djyo.tech/#/arena) · [**Docs**](https://oorkadocs.djyo.tech) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
 
 <sub>UHI11 Hookathon · Active Management & Curated Liquidity</sub>
 
@@ -108,7 +108,7 @@ flowchart TB
 - **The pool** is tETH/tUSD at about 3,000, seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit.
 - **Epochs** last 15 minutes. The Reactive CRON contract (Cron1000) pokes the keeper about every 17 minutes, so every ended epoch settles within one tick, with nobody clicking anything.
 - **A demo market** ([`market.yml`](.github/workflows/market.yml)) trades in the pool four times an hour with a throwaway key, walking the price through slow waves so tight and wide ranges take turns winning. It never settles: that is the keeper's job alone.
-- Connect any browser wallet on the [live app](https://debojyoti10cc.github.io/oorka/). Test tokens are minted from the app. All addresses live in [`deployments.1301.json`](frontend/public/deployments.1301.json).
+- Connect any browser wallet on the [live app](https://oorka.djyo.tech) (mirror: [GitHub Pages](https://debojyoti10cc.github.io/oorka/)). Test tokens are minted from the app. All addresses live in [`deployments.1301.json`](frontend/public/deployments.1301.json).
 
 ---
 

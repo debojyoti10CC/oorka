@@ -36,7 +36,7 @@ const PRODUCT: MenuGroup[] = [
 const RESOURCES: MenuGroup[] = [
   {
     items: [
-      { title: "Documentation", desc: "Mechanism, scoring math, defences and figures.", href: "#/docs", tone: "lilac", art: "docs" },
+      { title: "Documentation", desc: "Full docs: mechanism, contracts, keeper, diagrams.", href: "https://oorkadocs.djyo.tech", external: true, tone: "lilac", art: "docs" },
       {
         title: "Whitepaper",
         desc: "The full design, proofs and limits, in LaTeX.",

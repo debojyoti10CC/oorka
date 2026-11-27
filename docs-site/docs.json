@@ -41,7 +41,7 @@
     }
   },
   "banner": {
-    "content": "Live on Unichain Sepolia: the hook settles every 15-minute epoch on its own through a Reactive Network keeper. [Open the arena](https://debojyoti10cc.github.io/oorka/#/arena)",
+    "content": "Live on Unichain Sepolia: the hook settles every 15-minute epoch on its own through a Reactive Network keeper. [Open the arena](https://oorka.djyo.tech/#/arena)",
     "dismissible": true
   },
   "contextual": {
@@ -63,7 +63,7 @@
     "primary": {
       "type": "button",
       "label": "Open the app",
-      "href": "https://debojyoti10cc.github.io/oorka/"
+      "href": "https://oorka.djyo.tech/"
     }
   },
   "navigation": {
@@ -72,7 +72,7 @@
         {
           "anchor": "Live app",
           "icon": "monitor",
-          "href": "https://debojyoti10cc.github.io/oorka/"
+          "href": "https://oorka.djyo.tech/"
         },
         {
           "anchor": "GitHub",
