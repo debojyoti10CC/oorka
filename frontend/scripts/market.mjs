@@ -1,5 +1,5 @@
 // Demo market for the public testnet pool: one run trades the price toward a slowly moving target, then adds a
-// few round-trip trades for fee volume. A scheduled GitHub Action runs it every 15 minutes so the arena has real
+// round trip for fee volume. A scheduled GitHub Action runs it every 15 minutes so the arena has real
 // swaps to score. It never settles epochs: that stays with the Reactive keeper.
 //
 // The target is a deterministic function of time: a slow wave (about ±3.5% over 8 hours) plus a faster ripple.
@@ -106,7 +106,8 @@ if (Math.abs(now / target - 1) > 0.001) {
 }
 
 // ---------------------------------------------------------------- 2. round trips for fee volume
-const rounds = 2 + Math.floor(Math.random() * 3);
+// one round trip per run keeps fee volume flowing without flooding Oorka Pulse with billable events
+const rounds = 1;
 for (let i = 0; i < rounds; i++) {
   const eth = parseEther((5 + Math.random() * 20).toFixed(3));
   if (i % 2 === 0) {

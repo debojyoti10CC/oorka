@@ -12,10 +12,16 @@ concurrency:
   group: market
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  actions: write # lets the job re-dispatch itself
+
 jobs:
   trade:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # GitHub drops many scheduled triggers on this repo, so one run trades every 15 minutes for ~5.5 hours and
+    # then dispatches the next run itself. The schedule above stays as a backup starter.
+    timeout-minutes: 350
     defaults:
       run:
         working-directory: frontend
@@ -27,6 +33,16 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - run: node scripts/market.mjs
+      - name: Trade every 15 minutes
         env:
           TRADER_KEY: ${{ secrets.TRADER_KEY }}
+        run: |
+          for i in $(seq 1 21); do
+            node scripts/market.mjs || echo "run $i failed, continuing"
+            [ "$i" -lt 21 ] && sleep 900
+          done
+      - name: Start the next run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run market.yml --ref main -R ${{ github.repository }}
