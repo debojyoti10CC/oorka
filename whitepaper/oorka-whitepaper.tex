@@ -172,7 +172,7 @@ Figure~\ref{fig:arch} shows the components. One contract, \code{OorkaHook}, is t
 
   % ---------------- automation row
   \node[act,fill=violet!8,draw=violet,text width=4.6cm] (kp) at (6.6,5.3) {OorkaKeeper\\[-1pt]{\scriptsize\color{ink2} on the hook's chain}};
-  \node[act,fill=violet!8,draw=violet,text width=4.0cm] (rn) at (15.3,5.3) {Reactive Network\\[-1pt]{\scriptsize\color{ink2} CRON $\rightarrow$ OorkaReactive}};
+  \node[act,fill=violet!8,draw=violet,text width=4.0cm] (rn) at (15.3,5.3) {Reactive Network\\[-1pt]{\scriptsize\color{ink2} OorkaPulse $+$ CRON fallback}};
 
   % ---------------- edges: actors -> hook
   \draw[flow] (dep.east) -- node[elbl]{deposit}      (3.4,2.4);
@@ -562,13 +562,13 @@ Oorka runs on \textbf{Unichain Sepolia} (chain 1301) against the canonical Unisw
 \toprule
 \textbf{Contract} & \textbf{Address} \\
 \midrule
-\code{OorkaHook} (hook, vault, registry) & \href{https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0}{\texttt{\footnotesize 0xbeEcbe71d831880f2038Bc35b613e100F1f010A0}} \
-\code{OorkaPulse} (Lasna, event-driven) & \href{https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d}{\texttt{\footnotesize 0xdbb33964d494e7cabfb90656d682f3b09f42ba9d}} \
-\code{OorkaKeeper} (Pulse callbacks) & \href{https://sepolia.uniscan.xyz/address/0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97}{\texttt{\footnotesize 0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97}} \
-\code{OorkaReactive} (Lasna, Cron1000 fallback) & \href{https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450}{\texttt{\footnotesize 0x86c807a7a56c63472d52c46ebd2441d2067d7450}} \
-\code{OorkaKeeper} (CRON callbacks) & \href{https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5}{\texttt{\footnotesize 0x53b31469cf03ae9f0042c7d6cbeed46750e22da5}} \
-Uniswap v4 \code{PoolManager} & \href{https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac}{\texttt{\footnotesize 0x00b036b58a818b1bc34d502d3fe730db729e62ac}} \
-tETH / tUSD test tokens & \texttt{\footnotesize 0x64A3C35b31f04e3c92a45E9d003468e4574810e6} / \texttt{\footnotesize 0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C} \
+\code{OorkaHook} (hook, vault, registry) & \href{https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0}{\texttt{\footnotesize 0xbeEcbe71d831880f2038Bc35b613e100F1f010A0}} \\
+\code{OorkaPulse} (Lasna, event-driven) & \href{https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d}{\texttt{\footnotesize 0xdbb33964d494e7cabfb90656d682f3b09f42ba9d}} \\
+\code{OorkaKeeper} (Pulse callbacks) & \href{https://sepolia.uniscan.xyz/address/0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97}{\texttt{\footnotesize 0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97}} \\
+\code{OorkaReactive} (Lasna, Cron1000 fallback) & \href{https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450}{\texttt{\footnotesize 0x86c807a7a56c63472d52c46ebd2441d2067d7450}} \\
+\code{OorkaKeeper} (CRON callbacks) & \href{https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5}{\texttt{\footnotesize 0x53b31469cf03ae9f0042c7d6cbeed46750e22da5}} \\
+Uniswap v4 \code{PoolManager} & \href{https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac}{\texttt{\footnotesize 0x00b036b58a818b1bc34d502d3fe730db729e62ac}} \\
+tETH / tUSD test tokens & \texttt{\footnotesize 0x64A3C35b31f04e3c92a45E9d003468e4574810e6} / \texttt{\footnotesize 0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C} \\
 \bottomrule
 \end{tabularx}
 \caption{Live contracts. Explorer links: Uniscan (Unichain Sepolia) and Reactscan (Lasna).}
