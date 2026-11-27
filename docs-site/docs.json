@@ -81,6 +81,11 @@
           "href": "https://oorka.djyo.tech/"
         },
         {
+          "anchor": "Whitepaper",
+          "icon": "file-text",
+          "href": "https://github.com/debojyoti10CC/oorka/blob/main/whitepaper/oorka-whitepaper.pdf"
+        },
+        {
           "anchor": "GitHub",
           "icon": "github",
           "href": "https://github.com/debojyoti10CC/oorka"

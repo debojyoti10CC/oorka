@@ -40,7 +40,7 @@ const RESOURCES: MenuGroup[] = [
       {
         title: "Whitepaper",
         desc: "The full design, proofs and limits, in LaTeX.",
-        href: `${REPO_URL}/blob/main/whitepaper/oorka-whitepaper.tex`,
+        href: `${REPO_URL}/blob/main/whitepaper/oorka-whitepaper.pdf`,
         external: true,
         tone: "amber",
         art: "paper",
