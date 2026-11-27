@@ -1,8 +1,10 @@
 <div align="center">
 
-<a href="https://debojyoti10cc.github.io/oorka/"><img src="docs/readme/hero.jpg" alt="Oorka: the curator seat is earned, on-chain." width="100%"></a>
+<img src="docs/readme/logo.svg" alt="Oorka logo" width="96" height="96">
 
 # Oorka
+
+<a href="https://debojyoti10cc.github.io/oorka/"><img src="docs/readme/hero.jpg" alt="Oorka: the curator seat is earned, on-chain." width="100%"></a>
 
 **Curators compete on real fees. The winner runs the vault. No vote, no trust.**
 
@@ -29,8 +31,6 @@ Curated LP vaults ask depositors to trust a manager. You pick one on marketing, 
 
 ## How it works
 
-<img src="docs/readme/steps.png" alt="01 Declare · 02 Score · 03 Take over" width="100%">
-
 1. **Declare.** A challenger posts a bond and names a range. The hook adds a **dust probe** (`1e9` liquidity) at those ticks. v4 only tracks `feeGrowthInside` for initialised ticks, so now the PoolManager itself measures what that range earns, swap by swap.
 2. **Score.** Every curator gets a **paper portfolio** of 1,000 tUSD of virtual liquidity at their range: real fees from the probe, plus real price exposure. At each epoch end the portfolios are marked at the epoch's **time-weighted** price and compared with each other and with a passive **benchmark**.
 3. **Take over.** Beat the seat holder by `marginBps` for `winStreak` epochs in a row and the vault's **real** liquidity moves to your range in the same transaction. The old seat holder's bond is slashed to depositors.
@@ -39,11 +39,26 @@ The seat holder is scored exactly like everyone else, so the race is apples to a
 
 ## Why Oorka
 
-<img src="docs/readme/bento.jpg" alt="What's in the hook, performance fee, defences, proof, takeover" width="100%">
+<table>
+<tr>
+<td width="25%" align="center"><h2>46</h2><sub>Foundry tests + 5 invariants, green in CI</sub></td>
+<td width="25%" align="center"><h2>0</h2><sub>oracles, owners, admin keys or off-chain services</sub></td>
+<td width="25%" align="center"><h2>1e9</h2><sub>liquidity per probe: dust, but v4 tracks fees there</sub></td>
+<td width="25%" align="center"><h2>10%</h2><sub>seat holder's cut, only above the benchmark and high-water mark</sub></td>
+</tr>
+</table>
 
-<img src="docs/readme/stats.png" alt="46 tests · 0 oracles or admin keys · 1e9 probe liquidity · 10% fee above benchmark" width="100%">
+- **Proof, not a pitch deck.** Every score comes from v4's own `feeGrowthInside` at the declared ticks. Nobody self-reports a backtest; the pool measures the forward test.
+- **Earn the seat, earn the fee.** The seat holder is paid 10% of the value created above a passive benchmark and the high-water mark. Nothing for losses, nothing for doing what doing nothing would do.
+- **Hard to game.** Settlement prices at the epoch's time-weighted average, donations revert, vault moves wait for an honest price.
+- **Nobody runs it.** A Reactive Network CRON contract settles every epoch. Takeover and vault migration happen in one transaction.
 
-<img src="docs/readme/compare.png" alt="Typical vault manager vs auction-managed AMM vs Oorka" width="100%">
+| | Typical vault manager | Auction-managed AMM | **Oorka** |
+|---|---|---|---|
+| Who gets the seat | Whoever launched the vault | Highest rent bidder | **Best measured LP performance** |
+| Evidence | Self-reported backtest | Willingness to pay | **v4 fee growth at the declared ticks** |
+| Replacing a bad manager | Governance or withdraw | Outbid them | **Automatic after a win streak** |
+| Manager pay | Flat fee | Keeps arbitrage | **10% above benchmark + high-water** |
 
 ---
 
@@ -53,6 +68,10 @@ The seat holder is scored exactly like everyone else, so the race is apples to a
 <tr>
 <td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/arena"><img src="docs/readme/arena.png" alt="Arena"></a><p align="center"><b>Arena</b>: lanes, standings, the on-chain record</p></td>
 <td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/vault"><img src="docs/readme/vault.png" alt="Vault"></a><p align="center"><b>Vault</b>: deposit, withdraw, vault vs benchmark</p></td>
+</tr>
+<tr>
+<td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/swap"><img src="docs/readme/swap.jpg" alt="Swap"></a><p align="center"><b>Swap</b>: exact quotes from the live pool, and which curators your fee scores</p></td>
+<td width="50%"><a href="https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0#internaltx"><img src="docs/readme/uniscan.jpg" alt="Hook on Uniscan"></a><p align="center"><b>Uniscan</b>: the hook's on-chain activity</p></td>
 </tr>
 </table>
 
@@ -103,6 +122,9 @@ The seat holder is scored exactly like everyone else, so the race is apples to a
 - **`OorkaReactive`** subscribes to Reactive's built-in CRON event. The system contract (`0x8888…8888`) calls `react()` on every tick; every `ticksPerPoke` ticks it requests a callback to the hook's chain. An owner switch pauses and resumes the subscription.
 - **`OorkaKeeper`** only accepts the Reactive callback proxy **and** only when the network-injected sender is our own `OorkaReactive`. Ended epoch → settle; otherwise `Idle`. A failed settle emits `SettleFailed` and retries next tick.
 - The keeper has **no special rights** on the hook. It only adds liveness. A takeover settle uses under 1.5M gas, half the 3M callback budget (checked in the tests).
+
+<a href="https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450"><img src="docs/readme/reactscan.jpg" alt="OorkaReactive on Reactscan: 13 reactive executions, 13 callbacks, zero debt" width="100%"></a>
+<p align="center"><sub>OorkaReactive on Reactscan Lasna: every CRON tick executed and called back to the keeper, zero debt.</sub></p>
 
 <details>
 <summary><b>Deploy the keeper yourself</b></summary>
