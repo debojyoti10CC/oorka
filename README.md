@@ -4,7 +4,6 @@
 
 # Oorka
 
-<a href="https://debojyoti10cc.github.io/oorka/"><img src="docs/readme/hero.jpg" alt="Oorka: the curator seat is earned, on-chain." width="100%"></a>
 
 **Curators compete on real fees. The winner runs the vault. No vote, no trust.**
 
@@ -20,6 +19,8 @@ A Uniswap v4 hook where the right to manage a vault's liquidity is won, and kept
 [**Live app**](https://debojyoti10cc.github.io/oorka/) · [**Arena**](https://debojyoti10cc.github.io/oorka/#/arena) · [**Docs**](https://debojyoti10cc.github.io/oorka/#/docs) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
 
 <sub>UHI11 Hookathon · Active Management & Curated Liquidity</sub>
+
+<a href="https://debojyoti10cc.github.io/oorka/"><img src="docs/readme/hero.jpg" alt="Oorka: the curator seat is earned, on-chain." width="100%"></a>
 
 </div>
 
@@ -383,10 +384,5 @@ The hook, vault, scoring, benchmark, settlement price and keeper were written fo
 - **Reactive Network**: system-contract and callback-proxy interfaces follow [reactive-lib-omni](https://github.com/Reactive-Network/reactive-lib-omni), implemented inline to stay on solc 0.8.26; the CRON pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
 - **Foundry**, **viem**, **React**, **Vite**, and **React Bits** [`<Dither />`](https://reactbits.dev) for the hero background (unmodified).
 
-## Next steps
 
-- Per-epoch fee-credit caps against wash trading
-- Several vaults per pool with different risk mandates, all reading the same leaderboard
-- Swap-based rebalancing on migration instead of leaving the unmatched side idle
 
-<div align="center"><sub><b>Oorka</b>: curation as a competition that settles itself.</sub></div>
