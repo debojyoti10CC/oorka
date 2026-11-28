@@ -9,12 +9,12 @@ The CRON keeper settles on a timer, so an ended epoch can wait up to one tick (a
 sequenceDiagram
     autonumber
     actor T as Trader
-    box rgb(243,244,246) Unichain Sepolia
+    box rgba(148,163,184,0.12) Unichain Sepolia
         participant PM as PoolManager
         participant H as OorkaHook
         participant K as Pulse keeper
     end
-    box rgb(237,233,254) Reactive Lasna
+    box rgba(124,58,237,0.14) Reactive Lasna
         participant P as OorkaPulse
     end
     T->>PM: swap (epoch already over)

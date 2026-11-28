@@ -161,11 +161,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    box rgb(237,233,254) Reactive Lasna
+    box rgba(124,58,237,0.14) Reactive Lasna
         participant S as SYSTEM 0x8888…8888
         participant R as OorkaReactive
     end
-    box rgb(243,244,246) Unichain Sepolia
+    box rgba(148,163,184,0.12) Unichain Sepolia
         participant P as Callback proxy
         participant K as OorkaKeeper
         participant H as OorkaHook
