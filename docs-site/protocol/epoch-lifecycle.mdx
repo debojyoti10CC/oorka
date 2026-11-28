@@ -18,7 +18,7 @@ sequenceDiagram
 
     C->>H: register(name, lower, upper, bond)
     H->>PM: add 1e9 probe at [lower, upper]
-    H->>H: vL so paper NAV = 1,000 tUSD, snapshot feeGrowthInside
+    H->>H: vL so paper NAV = 1,000 (token1 units), snapshot feeGrowthInside
     loop During the epoch
         T->>PM: swap
         PM->>H: beforeSwap (first swap in block)

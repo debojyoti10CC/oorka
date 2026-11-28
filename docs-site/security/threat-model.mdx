@@ -28,7 +28,7 @@ flowchart LR
 | Declare a range after seeing where the price went | Ranges accrue only from the moment of declaration | by construction |
 | Flip ranges every block to chase fees | `switchCostBps` charged on every change | by construction |
 | Join late in an epoch with a lucky run | Must be present for the whole epoch (`joinedEpoch < epoch`) | `test_challengerTakesOverAfterStreak` |
-| Spam the leaderboard | 100 tUSD minimum bond, max 8 curators | `test_bondTooSmall` |
+| Spam the leaderboard | Minimum bond, max 8 curators | `test_bondTooSmall` |
 | Carry wins earned against the old seat holder into the new reign | Every streak resets on takeover | `test_takeoverResetsEveryStreak` |
 | Exit as seat holder to dodge the slash | `exit` reverts with `IsIncumbent` | `test_incumbentCannotExit` |
 | Move someone else's range | `NotCuratorOwner` | `test_onlyOwnerDeclares` |

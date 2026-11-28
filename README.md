@@ -10,13 +10,13 @@
 A Uniswap v4 hook where the right to manage a vault's liquidity is won, and kept, on measured performance.
 
 [![CI](https://github.com/debojyoti10CC/oorka/actions/workflows/ci.yml/badge.svg)](https://github.com/debojyoti10CC/oorka/actions/workflows/ci.yml)
-[![Demo market](https://github.com/debojyoti10CC/oorka/actions/workflows/market.yml/badge.svg)](https://github.com/debojyoti10CC/oorka/actions/workflows/market.yml)
+[![Market maker](https://github.com/debojyoti10CC/oorka/actions/workflows/market.yml/badge.svg)](https://github.com/debojyoti10CC/oorka/actions/workflows/market.yml)
 ![Uniswap v4](https://img.shields.io/badge/Uniswap-v4%20hook-ff007a)
 ![Unichain Sepolia](https://img.shields.io/badge/live%20on-Unichain%20Sepolia-7c3aed)
 ![Reactive Network](https://img.shields.io/badge/keeper-Reactive%20Network-171717)
 ![Tests](https://img.shields.io/badge/tests-61%20%2B%205%20invariants-15803d)
 
-[**Live app**](https://oorka.djyo.tech) · [**Arena**](https://oorka.djyo.tech/#/arena) · [**Docs**](https://oorkadocs.djyo.tech) · [**Whitepaper**](whitepaper/oorka-whitepaper.pdf) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
+[**Live app**](https://oorka.djyo.tech) · [**Arena**](https://oorka.djyo.tech/#/arena) · [**Docs**](https://oorkadocs.djyo.tech) · [**Whitepaper**](whitepaper/oorka-whitepaper.pdf) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0) · [**Run it locally**](#run-it)
 
 <sub>The curator seat, earned on-chain.</sub>
 
@@ -33,7 +33,7 @@ Curated LP vaults ask depositors to trust a manager. You pick one on marketing, 
 ## How it works
 
 1. **Declare.** A challenger posts a bond and names a range. The hook adds a **dust probe** (`1e9` liquidity) at those ticks. v4 only tracks `feeGrowthInside` for initialised ticks, so now the PoolManager itself measures what that range earns, swap by swap.
-2. **Score.** Every curator gets a **paper portfolio** of 1,000 tUSD of virtual liquidity at their range: real fees from the probe, plus real price exposure. At each epoch end the portfolios are marked at the epoch's **time-weighted** price and compared with each other and with a passive **benchmark**.
+2. **Score.** Every curator gets a **paper portfolio** of virtual liquidity at their range, starting at an index of 1,000: real fees from the probe, plus real price exposure. At each epoch end the portfolios are marked at the epoch's **time-weighted** price and compared with each other and with a passive **benchmark**.
 3. **Take over.** Beat the seat holder by `marginBps` for `winStreak` epochs in a row and the vault's **real** liquidity moves to your range in the same transaction. The old seat holder's bond is slashed to depositors.
 
 The seat holder is scored exactly like everyone else, so the race is apples to apples. Nobody runs it: a **Reactive Network** CRON contract settles every epoch on its own.
@@ -86,7 +86,7 @@ flowchart TB
 
 ## Live on testnet
 
-> **Track record (28 Nov 2026):** 91 epochs settled with no human transaction, **10 takeovers**, 10 performance fees and 11 vault migrations, all on-chain and all automatic. Zero debt on both reactive contracts.
+> **Track record.** The first deployment (26–28 Nov, test tokens) settled **158 epochs with no human transaction**: **17 takeovers**, 16 performance fees and 20 vault migrations, all on-chain. Since 28 Nov the same hook code runs on **real testnet USDC and WETH**, settled by Oorka Pulse.
 
 <table>
 <tr>
@@ -95,23 +95,23 @@ flowchart TB
 </tr>
 <tr>
 <td width="50%"><a href="https://oorka.djyo.tech/#/swap"><img src="docs/readme/swap.jpg" alt="Swap"></a><p align="center"><b>Swap</b>: exact quotes from the live pool, and which curators your fee scores</p></td>
-<td width="50%"><a href="https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0#internaltx"><img src="docs/readme/uniscan.jpg" alt="Hook on Uniscan"></a><p align="center"><b>Uniscan</b>: the hook's on-chain activity</p></td>
+<td width="50%"><a href="https://sepolia.uniscan.xyz/address/0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0#internaltx"><img src="docs/readme/uniscan.jpg" alt="Hook on Uniscan"></a><p align="center"><b>Uniscan</b>: the hook's on-chain activity</p></td>
 </tr>
 </table>
 
 | Contract | Chain | Address |
 |---|---|---|
-| **OorkaHook** (hook + vault + curator registry) | Unichain Sepolia | [`0xbeEcbe71d831880f2038Bc35b613e100F1f010A0`](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) |
-| **OorkaPulse** (event-driven: reacts to pool swaps) | Reactive Lasna | [`0xdbb33964d494e7cabfb90656d682f3b09f42ba9d`](https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d) |
-| **OorkaKeeper (Pulse)** | Unichain Sepolia | [`0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97`](https://sepolia.uniscan.xyz/address/0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97) |
+| **OorkaHook** (hook + vault + curator registry) | Unichain Sepolia | [`0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0`](https://sepolia.uniscan.xyz/address/0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0) |
+| **OorkaPulse** (event-driven: reacts to pool swaps) | Reactive Lasna | [`0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa`](https://lasna.reactscan.net/address/0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa) |
+| **OorkaKeeper (Pulse)** | Unichain Sepolia | [`0x6716dad1ad8a91ce35b368466948d25efe48e3ee`](https://sepolia.uniscan.xyz/address/0x6716dad1ad8a91ce35b368466948d25efe48e3ee) |
 | **OorkaKeeper (CRON)** | Unichain Sepolia | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
 | **OorkaReactive** (CRON fallback) | Reactive Lasna | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
 | Uniswap v4 PoolManager | Unichain Sepolia | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
-| tETH / tUSD test tokens | Unichain Sepolia | [`0x64A3…10e6`](https://sepolia.uniscan.xyz/address/0x64A3C35b31f04e3c92a45E9d003468e4574810e6) / [`0xaCB1…Ac5C`](https://sepolia.uniscan.xyz/address/0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C) |
+| USDC (Circle) / WETH | Unichain Sepolia | [`0x31d0…768F`](https://sepolia.uniscan.xyz/address/0x31d0220469e10c4E71834a79b1f276d740d3768F) / [`0x4200…0006`](https://sepolia.uniscan.xyz/address/0x4200000000000000000000000000000000000006) |
 
-- **The pool** is tETH/tUSD at about 3,000, seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit.
+- **The pool** is real testnet **USDC/WETH**: Circle's official USDC on Unichain Sepolia and the chain's canonical WETH, no mock tokens. It starts near 3,000 USDC per WETH, seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark, a vault deposit and background liquidity. Anyone can trade it: USDC comes from [Circle's faucet](https://faucet.circle.com) and the app wraps ETH into WETH for you.
 - **Epochs** last 15 minutes. **Oorka Pulse** reacts to the pool's own swaps and settles an ended epoch within seconds; the Reactive CRON contract (Cron1000, about every 17 minutes) is the fallback for quiet periods. Nobody clicks anything.
-- **A demo market** ([`market.yml`](.github/workflows/market.yml)) trades in the pool four times an hour with a throwaway key, walking the price through slow waves so tight and wide ranges take turns winning. It never settles: that is the keeper's job alone.
+- **A market maker** ([`market.yml`](.github/workflows/market.yml)) trades its own USDC and WETH in the pool four times an hour, walking the price through slow waves so tight and wide ranges take turns winning. It never settles: that is the keeper's job alone.
 - Connect any browser wallet on the [live app](https://oorka.djyo.tech) (mirror: [GitHub Pages](https://debojyoti10cc.github.io/oorka/)). Test tokens are minted from the app. All addresses live in [`deployments.1301.json`](frontend/public/deployments.1301.json).
 
 ---
@@ -233,7 +233,7 @@ Every CRON tick is billed whether or not anything happens, so pick the longest i
 ```mermaid
 flowchart TB
     subgraph Users
-        T["Traders / demo market"]
+        T["Traders / market maker"]
         D["Depositors"]
         C["Curators"]
     end
@@ -276,7 +276,7 @@ flowchart TB
 ```
 fees     = (feeGrowthInside_now − feeGrowthInside_last) · vL / 2^128
 position = amounts(vL, range, blockOpenPrice)
-NAV      = value(position + fees + cash, blockOpenPrice)        // in tUSD
+NAV      = value(position + fees + cash, blockOpenPrice)        // in token1 (WETH on the live pool)
 ```
 
 `vL` (virtual liquidity) is set so the portfolio is worth exactly its NAV when the range is declared. A range change re-derives `vL` from the current NAV minus the switch cost.
@@ -311,7 +311,7 @@ contracts/
   script/DeployTestnet.s.sol     deploy against a real v4 PoolManager
 frontend/                        Vite + React + viem app (landing, arena, vault, curate, swap, docs)
   scripts/                       deploy-testnet, deploy-reactive, deploy-local, market (demo trader)
-.github/workflows/               CI (forge build + test), Pages, Demo market
+.github/workflows/               CI (forge build + test), Pages, Docs, Market maker
 demo.sh                          one-command local demo
 ```
 
@@ -409,7 +409,7 @@ flowchart TB
 The hook, vault, scoring, benchmark, settlement price and keeper were written for this project. They build on:
 
 - **Uniswap v4** ([v4-core](https://github.com/Uniswap/v4-core), [v4-periphery](https://github.com/Uniswap/v4-periphery)): `PoolManager`, `StateLibrary`, `TickMath`, `SqrtPriceMath`, `LiquidityAmounts`, and the test helpers `Deployers`, `PoolSwapTest`, `PoolModifyLiquidityTest`.
-- **solmate**: `ERC20` (vault shares) and `MockERC20` (test tokens).
+- **solmate**: `ERC20` (vault shares) and `MockERC20` (tokens for the local devnet).
 - **Reactive Network**: system-contract and callback-proxy interfaces follow [reactive-lib-omni](https://github.com/Reactive-Network/reactive-lib-omni), implemented inline to stay on solc 0.8.26; the CRON pattern follows Reactive's [CRON demo](https://github.com/Reactive-Network/reactive-smart-contract-demos/tree/main/src/demos/cron).
 - **Foundry**, **viem**, **React**, **Vite**, and **React Bits** [`<Dither />`](https://reactbits.dev) for the hero background (unmodified).
 

@@ -14,7 +14,7 @@ The hook must be deployed at an address whose flag bits equal `AFTER_INITIALIZE 
 ## Curator actions
 
 <ResponseField name="register(string name, int24 lower, int24 upper, uint256 bond) → uint256 id" type="external">
-  Enter the competition. Pulls `bond` tUSD (token1) plus probe dust from the caller. Reuses an exited slot if one exists. The first curator ever registered becomes the seat holder and the vault is placed at their range.
+  Enter the competition. Pulls `bond` of token1 (WETH on the live pool) plus probe dust from the caller. Reuses an exited slot if one exists. The first curator ever registered becomes the seat holder and the vault is placed at their range.
 
   Reverts: `BadRange`, `BondTooSmall`, `TooManyCurators`. Emits `CuratorRegistered`.
 </ResponseField>
@@ -72,7 +72,7 @@ The hook must be deployed at an address whose flag bits equal `AFTER_INITIALIZE 
 | `getCurators() → CuratorView[]` | Every slot with live NAV, growth, bond, streak and flags |
 | `curatorCount()` | Length of the curator array (≤ 9) |
 | `curatorNav(id)` | Live paper NAV of one curator |
-| `vaultNav()` | Vault value in tUSD at the block-open price, fees included |
+| `vaultNav()` | Vault value in token1 at the block-open price, fees included |
 | `vaultState()` | `(lower, upper, liquidity, idle0, idle1, nav, supply)` |
 | `benchmarkReport()` | `(vaultSinceStart, vaultThisEpoch, benchSinceStart, benchThisEpoch)` as WAD growth |
 | `epochInfo()` | `(current, start, end, now)` |
@@ -92,7 +92,7 @@ struct CuratorView {
     string name;
     int24 lower;
     int24 upper;
-    uint256 nav;            // live paper NAV, tUSD (WAD)
+    uint256 nav;            // live paper NAV, in token1 units
     uint256 epochStartNav;
     uint256 epochGrowthWad; // nav / epochStartNav
     uint256 bond;

@@ -24,7 +24,7 @@ flowchart TB
         PM["v4 PoolManager<br/>probe + vault positions"]
     end
     APP["Web app (GitHub Pages)"]
-    MKT["Demo market (GitHub Action)"]
+    MKT["Market maker (GitHub Action)"]
 
     SYS -- "Cron1000 log" --> RX
     PM -. "Swap log" .-> PU
@@ -67,7 +67,7 @@ flowchart TB
   <Accordion title="Web app" icon="monitor">
     React + viem on GitHub Pages. Landing page, Arena, Vault, Curate, Swap and Docs. Reads history from the Blockscout logs API and new blocks over RPC.
   </Accordion>
-  <Accordion title="Demo market" icon="activity">
+  <Accordion title="Market maker" icon="activity">
     A scheduled GitHub Action that trades the public pool so the competition has real fee growth to score. It never settles.
   </Accordion>
 </AccordionGroup>

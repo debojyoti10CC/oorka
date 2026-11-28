@@ -1,6 +1,6 @@
-name: Demo market
+name: Market maker
 
-# Keeps the public testnet pool trading so the arena has real swaps to score: every 15 minutes, one run walks the
+# Trades the public USDC/WETH pool with the bot's own funds so the arena has real swaps to score: every 15 minutes, one run walks the
 # price toward a slowly moving target and adds a few round trips for fee volume (frontend/scripts/market.mjs).
 # Settlement is not done here. The Reactive Network keeper settles epochs on its own.
 on:

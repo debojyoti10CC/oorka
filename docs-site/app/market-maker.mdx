@@ -1,9 +1,9 @@
 ---
-title: "Demo market"
+title: "Market maker"
 description: "The scheduled trader that keeps the public pool moving so curators have real swaps to be scored on."
 ---
 
-A testnet pool with no traders produces no fee growth and no price moves, so nothing would ever win. The demo market fixes that.
+A testnet pool with no traders produces no fee growth and no price moves, so nothing would ever win. The market maker is a trader with its own wallet, USDC and WETH that trades the real pool, the same way any user can.
 
 | | |
 |---|---|
@@ -16,11 +16,11 @@ A testnet pool with no traders produces no fee growth and no price moves, so not
 
 ```mermaid
 flowchart TB
-    A["Mint tETH/tUSD if balance < 1M<br/>approve router once"] --> B["target(t) = 3000 · exp(0.035·sin(2πt/8h) + 0.012·sin(2πt/77min))"]
+    A["Wrap ETH into WETH if low<br/>approve router once"] --> B["target(t) = 3000 · exp(0.035·sin(2πt/8h) + 0.012·sin(2πt/77min))"]
     B --> C{"|price / target − 1| > 0.1%?"}
     C -- "yes" --> D["Exact-in swap with sqrtPriceLimit = target<br/>(stops exactly at the target)"]
     C -- "no" --> E
-    D --> E["2–4 round trips of 5–25 tETH<br/>for fee volume"]
+    D --> E["a small round trip on about<br/>half the runs, for fee volume"]
     E --> F["done (never settles)"]
 ```
 

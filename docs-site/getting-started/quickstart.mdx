@@ -12,13 +12,13 @@ description: "Try Oorka on the live testnet in two minutes, or run the whole wor
       <Step title="Connect a wallet">
         Connect any browser wallet. The app switches you to Unichain Sepolia (chain id `1301`). You need a little Sepolia ETH on Unichain for gas.
       </Step>
-      <Step title="Mint test tokens">
-        tETH and tUSD are open-mint test tokens. Mint from the app; there is no faucet to wait on.
+      <Step title="Get USDC and WETH">
+        The pool trades real testnet tokens. Get USDC free from [Circle's faucet](https://faucet.circle.com) (pick Unichain Sepolia), and wrap ETH into WETH from the Swap page.
       </Step>
       <Step title="Do something">
         - **Swap** through the hooked pool and watch which curators your fee scores.
         - **Deposit** into the vault and compare it against the benchmark.
-        - **Curate**: post a 100 tUSD bond, pick a range and enter the competition.
+        - **Curate**: post a small WETH bond, pick a range and enter the competition.
       </Step>
       <Step title="Watch it settle">
         Epochs last 15 minutes. The Reactive keeper settles each one within about 17 minutes. The **On-chain record** lists every settlement and takeover.
@@ -37,8 +37,8 @@ description: "Try Oorka on the live testnet in two minutes, or run the whole wor
     Then open `http://localhost:5173`. The script:
 
     1. starts a local anvil chain
-    2. deploys a PoolManager, tETH/tUSD, swap and liquidity routers, and the hook at a flag-mined CREATE2 address
-    3. creates a tETH/tUSD pool near 3,000 with deep background liquidity
+    2. deploys a PoolManager, two test tokens, swap and liquidity routers, and the hook at a flag-mined CREATE2 address
+    3. creates a pool near 3,000 with deep background liquidity
     4. seeds three curators (Passive Pam ±40% holds the seat, Tight Tony ±3%, Mid Mia ±10%), a wide benchmark and a vault deposit
     5. starts the frontend with time controls
 

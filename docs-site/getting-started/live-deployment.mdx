@@ -3,20 +3,20 @@ title: "Live deployment"
 description: "Every contract Oorka runs on Unichain Sepolia and Reactive Lasna, and how the live world is set up."
 ---
 
-<Info>Status on 28 Nov 2026: 91 epochs settled with no human transaction, 10 takeovers, 10 performance fees paid and 11 vault migrations, all on-chain. Zero debt on both reactive contracts.</Info>
+<Info>Live on real testnet assets since 28 Nov 2026: Circle's USDC and canonical WETH on Unichain Sepolia. The first deployment (test tokens, 26–28 Nov) settled 158 epochs with no human transaction, including 17 takeovers, 16 performance fees and 20 vault migrations.</Info>
 
 ## Contracts
 
 | Contract | Chain | Address |
 |---|---|---|
-| **OorkaHook** (hook, vault, curator registry) | Unichain Sepolia (1301) | [`0xbeEcbe71d831880f2038Bc35b613e100F1f010A0`](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) |
+| **OorkaHook** (hook, vault, curator registry) | Unichain Sepolia (1301) | [`0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0`](https://sepolia.uniscan.xyz/address/0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0) |
 | **OorkaKeeper** (callback receiver, settles epochs) | Unichain Sepolia | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
-| **OorkaPulse** (event-driven, reacts to pool swaps) | Reactive Lasna | [`0xdbb33964d494e7cabfb90656d682f3b09f42ba9d`](https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d) |
-| **OorkaKeeper (Pulse)** | Unichain Sepolia | [`0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97`](https://sepolia.uniscan.xyz/address/0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97) |
+| **OorkaPulse** (event-driven, reacts to pool swaps) | Reactive Lasna | [`0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa`](https://lasna.reactscan.net/address/0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa) |
+| **OorkaKeeper (Pulse)** | Unichain Sepolia | [`0x6716dad1ad8a91ce35b368466948d25efe48e3ee`](https://sepolia.uniscan.xyz/address/0x6716dad1ad8a91ce35b368466948d25efe48e3ee) |
 | **OorkaReactive** (CRON fallback) | Reactive Lasna | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
 | Uniswap v4 PoolManager | Unichain Sepolia | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
-| tETH (token0) | Unichain Sepolia | [`0x64A3C35b31f04e3c92a45E9d003468e4574810e6`](https://sepolia.uniscan.xyz/address/0x64A3C35b31f04e3c92a45E9d003468e4574810e6) |
-| tUSD (token1) | Unichain Sepolia | [`0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C`](https://sepolia.uniscan.xyz/address/0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C) |
+| USDC (token0, Circle) | Unichain Sepolia | [`0x31d0220469e10c4E71834a79b1f276d740d3768F`](https://sepolia.uniscan.xyz/address/0x31d0220469e10c4E71834a79b1f276d740d3768F) |
+| WETH (token1, canonical) | Unichain Sepolia | [`0x4200000000000000000000000000000000000006`](https://sepolia.uniscan.xyz/address/0x4200000000000000000000000000000000000006) |
 | Swap router (PoolSwapTest) | Unichain Sepolia | `0xa93b93a962d8b00d409f084f2262c0a773b2e0dd` |
 | Reactive callback proxy | Unichain Sepolia | `0x775c9B990ADe401060B78D0e98684eEf8d2466C1` |
 
@@ -26,8 +26,8 @@ All addresses are also in [`frontend/public/deployments.1301.json`](https://gith
 
 | Property | Value |
 |---|---|
-| Pair | tETH / tUSD |
-| Starting price | about 3,000 tUSD per tETH |
+| Pair | USDC / WETH (real testnet tokens, no mocks) |
+| Starting price | about 3,000 USDC per WETH |
 | Fee | 0.30% (`3000`) |
 | Tick spacing | 60 |
 | Hook | OorkaHook (bound in `afterInitialize`) |
@@ -55,7 +55,7 @@ flowchart TB
   <Card title="Oorka Pulse" icon="zap" href="/keeper/pulse">
     The first swap after an epoch ends triggers settlement within seconds. The CRON keeper (about every 17 minutes) is the fallback.
   </Card>
-  <Card title="Demo market" icon="activity" href="/app/demo-market">
+  <Card title="Market maker" icon="activity" href="/app/market-maker">
     A GitHub Action trades the pool four times an hour so curators have real swaps to be scored on.
   </Card>
 </CardGroup>

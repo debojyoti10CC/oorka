@@ -26,14 +26,14 @@ struct Config {
 | `switchCostBps` | 30 (0.3%) | 30 | Paper cost per range change |
 | `slashBps` | 2000 (20%) | 2000 | Dethroned bond paid to depositors |
 | `maxTickDeviation` | 300 | 200 | Price-push tolerance for vault moves |
-| `minBond` | 100 tUSD | 100 tUSD | Entry bond |
+| `minBond` | 0.0001 WETH | 100 tUSD | Entry bond (in token1) |
 | `perfFeeBps` | 1000 (10%) | 1000 | Seat holder's cut above the hurdle |
 
 ## Constants
 
 | Constant | Value | Purpose |
 |---|---|---|
-| `INITIAL_NAV` | 1,000e18 | Starting paper portfolio (tUSD) |
+| `INITIAL_NAV` | 1,000e18 | Starting paper portfolio, in token1 units (an index of 1,000) |
 | `PROBE_LIQUIDITY` | 1e9 | Dust liquidity per probe |
 | `MAX_CURATORS` | 8 | Active curators, excluding the benchmark |
 | `MIN_SHARES` | 1,000 | Shares burned to `0xdead` on first deposit |

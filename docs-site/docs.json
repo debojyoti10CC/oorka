@@ -93,7 +93,7 @@
         {
           "anchor": "Hook on Uniscan",
           "icon": "search",
-          "href": "https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0"
+          "href": "https://sepolia.uniscan.xyz/address/0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0"
         }
       ]
     },
@@ -167,7 +167,7 @@
             "group": "App",
             "pages": [
               "app/overview",
-              "app/demo-market"
+              "app/market-maker"
             ]
           },
           {

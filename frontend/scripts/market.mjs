@@ -140,8 +140,10 @@ if (Math.abs(now / target - 1) > 0.001) {
   if (bal > 0n) await swap(spend === 0, -(bal / 2n), sqrtOf(target), up ? `buy ${symOf(b)} to target` : `sell ${symOf(b)} to target`);
 }
 
-// ---------------------------------------------------------------- 2. round trips for fee volume
-const rounds = 1 + Math.floor(Math.random() * 2);
+// ---------------------------------------------------------------- 2. a round trip for fee volume
+// Every swap is also a Reactive transaction for Oorka Pulse (billed in lREACT), so volume stays modest: one
+// round trip on about half the runs, on top of the walk toward the target.
+const rounds = Math.random() < 0.5 ? 1 : 0;
 for (let i = 0; i < rounds; i++) {
   const amt = units(size * (1 + Math.random() * 2), b);
   const sellBase = b === 0; // zeroForOne sells token0

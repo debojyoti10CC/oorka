@@ -7,8 +7,8 @@ Oorka has three kinds of participants. Each one only needs the app and a wallet.
 
 ```mermaid
 flowchart LR
-    T["Traders"] -- "swap, pay fees" --> POOL["tETH/tUSD pool"]
-    D["Depositors"] -- "deposit tETH + tUSD" --> V["Vault"]
+    T["Traders"] -- "swap, pay fees" --> POOL["USDC/WETH pool"]
+    D["Depositors"] -- "deposit USDC + WETH" --> V["Vault"]
     C["Curators"] -- "bond + range" --> H["Hook"]
     POOL -- "fees" --> V
     POOL -- "fee growth" --> H
@@ -19,7 +19,7 @@ flowchart LR
 
 <Steps>
   <Step title="Deposit">
-    Open **Vault**, enter tETH and tUSD amounts and deposit. Liquidity is added at the current seat holder's range; any amount that doesn't fit the range stays in your wallet. You receive ERC20 vault shares.
+    Open **Vault**, enter WETH and USDC amounts and deposit. Liquidity is added at the current seat holder's range; any amount that doesn't fit the range stays in your wallet. You receive ERC20 vault shares.
   </Step>
   <Step title="Let the competition work">
     You don't pick a manager. Whoever holds the seat runs the vault. If a challenger beats them for two epochs in a row, your liquidity moves to the new range automatically and 20% of the old seat holder's bond is paid into the vault.
@@ -36,7 +36,7 @@ flowchart LR
 
 <Steps>
   <Step title="Register">
-    Open **Curate**, name yourself, pick a range and post a bond of at least 100 tUSD. The hook places a dust probe at your ticks and gives you a 1,000 tUSD paper portfolio.
+    Open **Curate**, name yourself, pick a range and post a bond in WETH (at least the pool's minimum). The hook places a dust probe at your ticks and gives you a paper portfolio that starts at an index of 1,000.
   </Step>
   <Step title="Qualify">
     You must be present for a whole epoch before your results count. The epoch you join in is a qualifying epoch.
@@ -53,7 +53,7 @@ flowchart LR
 
 ## Traders
 
-Swap tETH and tUSD on the **Swap** page. Quotes are simulated exactly against the live pool. The hook never changes swap pricing: you pay the normal 0.30% LP fee, which goes to in-range liquidity, and every swap feeds the fee growth that curators are scored on.
+Swap USDC and WETH on the **Swap** page. Quotes are simulated exactly against the live pool. The hook never changes swap pricing: you pay the normal 0.30% LP fee, which goes to in-range liquidity, and every swap feeds the fee growth that curators are scored on.
 
 <Frame caption="The Swap page shows which curators' ranges your swap is scored into.">
   <img src="/images/swap.jpg" alt="Oorka swap page" />
