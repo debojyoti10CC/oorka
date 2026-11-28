@@ -1,4 +1,4 @@
-import { tickToPrice, fmt, fmtPct, fromWad } from "./lib/math";
+import { baseSym, fmt, fmtPct, fromWad, quoteSym, rangePrices } from "./lib/math";
 
 export type CuratorRow = {
   id: number;
@@ -40,7 +40,7 @@ export function Lanes({ curators, price, vault }: Props) {
     (a, b) => Number(b.incumbent) - Number(a.incumbent) || Number(a.benchmark) - Number(b.benchmark) || a.id - b.id,
   );
 
-  const prices = active.flatMap((c) => [tickToPrice(c.lower), tickToPrice(c.upper)]);
+  const prices = active.flatMap((c) => rangePrices(c.lower, c.upper));
   if (price > 0) prices.push(price);
   let lo = Math.max(Math.min(...prices) * 0.94, price / 2.2);
   let hi = Math.min(Math.max(...prices) * 1.06, price * 2.2);
@@ -76,7 +76,7 @@ export function Lanes({ curators, price, vault }: Props) {
           </text>
         </g>
       ))}
-      <text x={GUTTER_L + plotW + 14} y={H - 12} className="axis">tUSD / tETH</text>
+      <text x={GUTTER_L + plotW + 14} y={H - 12} className="axis">{quoteSym()} / {baseSym()}</text>
       <text x={W - 8} y={top - 12} className="axis" textAnchor="end">epoch return</text>
 
       {/* vault lane */}
@@ -84,9 +84,9 @@ export function Lanes({ curators, price, vault }: Props) {
         <text x={12} y={ROW / 2 + 5} className="lane-name strong">Vault liquidity</text>
         {vault && vault.liquidity > 0n && (
           <rect
-            x={clampX(tickToPrice(vault.lower))}
+            x={clampX(rangePrices(vault.lower, vault.upper)[0])}
             y={ROW / 2 - 10}
-            width={Math.max(2, clampX(tickToPrice(vault.upper)) - clampX(tickToPrice(vault.lower)))}
+            width={Math.max(2, clampX(rangePrices(vault.lower, vault.upper)[1]) - clampX(rangePrices(vault.lower, vault.upper)[0]))}
             height={20}
             rx={4}
             className="vault-bar"
@@ -97,8 +97,7 @@ export function Lanes({ curators, price, vault }: Props) {
       </g>
 
       {sorted.map((c, i) => {
-        const pl = tickToPrice(c.lower);
-        const pu = tickToPrice(c.upper);
+        const [pl, pu] = rangePrices(c.lower, c.upper);
         const inRange = price >= pl && price <= pu;
         const g = fromWad(c.epochGrowthWad);
         const color = colorOf(c);

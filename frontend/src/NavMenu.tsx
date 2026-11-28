@@ -37,9 +37,9 @@ function ArtShape({ art, ink, mid }: { art: Art; ink: string; mid: string }) {
       return (
         <g>
           <circle cx="92" cy="112" r="42" fill={W} />
-          <text x="92" y="122" textAnchor="middle" fontFamily="Geist, sans-serif" fontWeight="700" fontSize="26" fill={ink}>tETH</text>
+          <text x="92" y="122" textAnchor="middle" fontFamily="Geist, sans-serif" fontWeight="700" fontSize="26" fill={ink}>WETH</text>
           <circle cx="150" cy="174" r="42" fill={mid} />
-          <text x="150" y="184" textAnchor="middle" fontFamily="Geist, sans-serif" fontWeight="700" fontSize="26" fill={W}>tUSD</text>
+          <text x="150" y="184" textAnchor="middle" fontFamily="Geist, sans-serif" fontWeight="700" fontSize="26" fill={W}>USDC</text>
           <path d="M150 92 A58 58 0 0 1 184 142" fill="none" stroke={ink} strokeWidth="6" strokeLinecap="round" />
           <path d="M176 136 L184 146 L192 134" fill="none" stroke={ink} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M92 196 A58 58 0 0 1 58 146" fill="none" stroke={ink} strokeWidth="6" strokeLinecap="round" />

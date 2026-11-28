@@ -16,10 +16,15 @@ import { foundry } from "viem/chains";
 import hookAbi from "../abi/OorkaHook.json";
 import erc20Abi from "../abi/MockERC20.json";
 import swapAbi from "../abi/PoolSwapTest.json";
+import { setPair } from "./math";
 
 export const HOOK_ABI = hookAbi as Abi;
 export const ERC20_ABI = erc20Abi as Abi;
 export const SWAP_ABI = swapAbi as Abi;
+export const WETH_ABI = [
+  { type: "function", name: "deposit", stateMutability: "payable", inputs: [], outputs: [] },
+  { type: "function", name: "withdraw", stateMutability: "nonpayable", inputs: [{ name: "wad", type: "uint256" }], outputs: [] },
+] as const satisfies Abi;
 
 // ---------------------------------------------------------------- mode
 // local:  anvil + dev keys, no wallet popups (./demo.sh)
@@ -60,6 +65,21 @@ export type Deployments = {
   keeper?: Address;
   deployBlock?: number;
   reactive?: { chainId: number; contract: Address; cronTopic?: string };
+  pulse?: { chainId: number; contract: Address; keeper: Address; poolId: string };
+  /** token metadata; older deployment files without it are the open-mint tETH/tUSD pair */
+  token0Symbol?: string;
+  token1Symbol?: string;
+  token0Decimals?: number;
+  token1Decimals?: number;
+  /** which currency (0 or 1) prices are quoted in units of */
+  base?: 0 | 1;
+  mintable?: boolean;
+  /** wrapped native token, if one side of the pool is it: the app can wrap ETH for you */
+  weth?: Address;
+  /** where to get the other token on a testnet */
+  faucets?: Record<string, string>;
+  /** a sensible trade size in the base asset, for the market buttons and default swap amount */
+  tradeBase?: number;
 };
 
 // ---------------------------------------------------------------- actors (local mode)
@@ -151,7 +171,7 @@ export async function connectWallet(): Promise<Address> {
 /** In local mode: the anvil account for a slot. In wallet mode: the connected wallet (or zero address). */
 export const addressOf = (slot: number): Address => (IS_WALLET ? connected ?? ZERO : accountOf(slot).address);
 
-type Call = { address: Address; abi: Abi; functionName: string; args?: readonly unknown[] };
+type Call = { address: Address; abi: Abi; functionName: string; args?: readonly unknown[]; value?: bigint };
 
 /**
  * Simulate (for a readable revert reason), send, and wait for the receipt.
@@ -192,7 +212,22 @@ export async function loadDeployments(): Promise<Deployments> {
   });
   if (!code || code === "0x")
     throw new Error(IS_WALLET ? "The hook isn't deployed on this network." : "The hook isn't deployed on this chain. Was anvil restarted? Run the demo again.");
-  return { ...d, fee: Number(d.fee), tickSpacing: Number(d.tickSpacing), chainId: Number(d.chainId) };
+  setPair({
+    sym0: d.token0Symbol ?? "tETH",
+    sym1: d.token1Symbol ?? "tUSD",
+    dec0: Number(d.token0Decimals ?? 18),
+    dec1: Number(d.token1Decimals ?? 18),
+    base: d.base === 1 ? 1 : 0,
+    mintable: d.mintable ?? !d.token0Symbol,
+  });
+  return {
+    ...d,
+    fee: Number(d.fee),
+    tickSpacing: Number(d.tickSpacing),
+    chainId: Number(d.chainId),
+    mintable: d.mintable ?? !d.token0Symbol,
+    tradeBase: Number(d.tradeBase ?? 20),
+  };
 }
 
 // ---------------------------------------------------------------- errors

@@ -8,6 +8,7 @@ import {
   MARKET_SLOT,
   REFRESH_MS,
   SWAP_ABI,
+  WETH_ABI,
   addressOf,
   addressUrl,
   chain,
@@ -21,13 +22,24 @@ import {
 import {
   MAX_SQRT_PRICE_LIMIT,
   MIN_SQRT_PRICE_LIMIT,
+  baseIndex,
+  baseSym,
+  decOf,
+  digitsFor,
   fmt,
   fmtPct,
+  fmtRange,
+  fromT1,
+  fromUnits,
   fromWad,
-  priceToTick,
+  pair,
+  quoteSym,
+  rangePrices,
+  rangeToTicks,
   sqrtPriceToPrice,
-  tickToPrice,
-  toWad,
+  symOf,
+  t1InQuote,
+  toUnits,
 } from "./lib/math";
 import { Lanes, colorOf, type CuratorRow } from "./Lanes";
 import { useWallet } from "./lib/wallet";
@@ -55,7 +67,7 @@ type Snapshot = {
   curators: CuratorRow[];
   vault: { lower: number; upper: number; liquidity: bigint; idle0: bigint; idle1: bigint; nav: bigint; supply: bigint };
   epoch: { current: number; start: number; end: number; now: number; fetchedAt: number };
-  me: { shares: bigint; eth: bigint; usd: bigint };
+  me: { shares: bigint; b0: bigint; b1: bigint };
   config: Config;
   // growth multipliers, 1 = flat
   bench: { vaultSince: number; vaultEpoch: number; benchSince: number; benchEpoch: number };
@@ -122,7 +134,7 @@ export default function App({ view = "arena" }: { view?: View }) {
         curators: rows,
         vault: { lower: Number(v[0]), upper: Number(v[1]), liquidity: v[2], idle0: v[3], idle1: v[4], nav: v[5], supply: v[6] },
         epoch: { current: Number(e[0]), start: Number(e[1]), end: Number(e[2]), now: Number(e[3]), fetchedAt: Date.now() },
-        me: { shares: shares as bigint, eth: eth as bigint, usd: usd as bigint },
+        me: { shares: shares as bigint, b0: eth as bigint, b1: usd as bigint },
         config: {
           epochLength: Number(c[0]),
           winStreak: Number(c[1]),
@@ -138,7 +150,7 @@ export default function App({ view = "arena" }: { view?: View }) {
         const next = { ...h };
         for (const r of rows) {
           if (!r.active) continue;
-          const val = fromWad(r.nav);
+          const val = fromT1(r.nav);
           const arr = next[r.id] ?? [];
           if (arr[arr.length - 1] !== val) next[r.id] = [...arr, val].slice(-60);
         }
@@ -226,6 +238,8 @@ export default function App({ view = "arena" }: { view?: View }) {
     run(mode === "range" ? "Trading in a range" : mode === "up" ? "Pumping" : "Dumping", async () => {
       if (!dep || !snap || !poolKey) return;
       let swaps = 0;
+      const b = baseIndex();
+      const q: 0 | 1 = b === 0 ? 1 : 0;
       const swapOnce = async (zeroForOne: boolean, amountSpecified: bigint) => {
         await send(MARKET_SLOT, {
           address: dep.swapRouter,
@@ -244,31 +258,36 @@ export default function App({ view = "arena" }: { view?: View }) {
         });
         swaps++;
       };
+      // trade sizes scale with the deployment's pool depth (tradeBase is in the base asset)
+      const size = dep.tradeBase ?? 20;
+      const baseAmt = (x: number) => toUnits(x.toFixed(decOf(b)), decOf(b));
+      const quoteAmt = (x: number) => toUnits(x.toFixed(decOf(q)), decOf(q));
       // in wallet mode every swap is a wallet confirmation, so keep the bursts short
       const rounds = IS_WALLET ? 2 : 8;
       const pushes = IS_WALLET ? 3 : 10;
-      if (IS_WALLET) await ensureFunds(MARKET_SLOT, toWad("200"), toWad("2000000"), dep.swapRouter);
+      const needBase = baseAmt(size * 2);
+      const needQuote = quoteAmt(size * 2 * snap.price);
+      await ensureFunds(MARKET_SLOT, b === 0 ? needBase : needQuote, b === 0 ? needQuote : needBase, dep.swapRouter);
+      const sellBase = b === 0; // zeroForOne sells token0
       if (mode === "range") {
-        // round trips: sell some tETH, then buy exactly that much back. Price wobbles and returns, fees pile up.
+        // round trips: sell some of the base asset, then buy exactly that much back. Price wobbles, fees pile up.
         for (let i = 0; i < rounds; i++) {
-          const eth = toWad((15 + Math.random() * 25).toFixed(4));
-          const sellFirst = i % 2 === 0;
-          if (sellFirst) {
-            await swapOnce(true, -eth); // exact in: sell tETH
-            await swapOnce(false, eth); // exact out: buy the same tETH back
+          const amt = baseAmt(size * (0.5 + Math.random() * 0.5));
+          if (i % 2 === 0) {
+            await swapOnce(sellBase, -amt); // exact in: sell base
+            await swapOnce(!sellBase, amt); // exact out: buy the same base back
           } else {
-            await swapOnce(false, eth);
-            await swapOnce(true, -eth);
+            await swapOnce(!sellBase, amt);
+            await swapOnce(sellBase, -amt);
           }
           if (i % 2 === 1) await refresh();
         }
       } else {
         // trend: one-way flow, the price walks out of tight ranges
         for (let i = 0; i < pushes; i++) {
-          const eth = 4 + Math.random() * 4;
-          const zeroForOne = mode === "down";
-          const amount = zeroForOne ? toWad(eth.toFixed(4)) : toWad((eth * snap.price).toFixed(2));
-          await swapOnce(zeroForOne, -amount);
+          const x = size * (0.2 + Math.random() * 0.2);
+          if (mode === "down") await swapOnce(sellBase, -baseAmt(x)); // sell base
+          else await swapOnce(!sellBase, -quoteAmt(x * snap.price)); // spend quote on base
           if (i % 3 === 2) await refresh();
         }
       }
@@ -297,16 +316,35 @@ export default function App({ view = "arena" }: { view?: View }) {
       return "Epoch settled. Scores and streaks updated.";
     });
 
-  const ensureFunds = async (slot: number, needEth: bigint, needUsd: bigint, spender?: Address) => {
+  /**
+   * Make sure `slot` holds `need0`/`need1` of the pool's tokens and has approved `spender`. Test tokens are minted;
+   * real tokens can't be, so WETH is wrapped from ETH and anything else points at its faucet.
+   */
+  const ensureFunds = async (slot: number, need0: bigint, need1: bigint, spender?: Address) => {
     if (!dep) return;
     const who = addressOf(slot);
     const to = spender ?? dep.hook;
-    for (const [token, need] of [
-      [dep.token0, needEth],
-      [dep.token1, needUsd],
-    ] as [Address, bigint][]) {
+    const legs: [0 | 1, Address, bigint][] = [
+      [0, dep.token0, need0],
+      [1, dep.token1, need1],
+    ];
+    for (const [i, token, need] of legs) {
+      if (need === 0n) continue;
       const bal = (await publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: "balanceOf", args: [who] })) as bigint;
-      if (bal < need) await send(slot, { address: token, abi: ERC20_ABI, functionName: "mint", args: [who, need * 10n] });
+      if (bal < need) {
+        if (pair().mintable) {
+          await send(slot, { address: token, abi: ERC20_ABI, functionName: "mint", args: [who, need * 10n] });
+        } else if (dep.weth && token.toLowerCase() === dep.weth.toLowerCase()) {
+          await send(slot, { address: token, abi: WETH_ABI as any, functionName: "deposit", args: [], value: need - bal });
+        } else {
+          const sym = symOf(i);
+          const faucet = dep.faucets?.[sym];
+          throw new Error(
+            `You need ${fmt(fromUnits(need - bal, decOf(i)), digitsFor(sym))} more ${sym}.` +
+              (faucet ? ` Get testnet ${sym} free at ${faucet}.` : ""),
+          );
+        }
+      }
       const allowance = (await publicClient.readContract({
         address: token,
         abi: ERC20_ABI,
@@ -317,23 +355,24 @@ export default function App({ view = "arena" }: { view?: View }) {
     }
   };
 
+  // probe positions take a few wei of each token; this is a comfortable margin for that dust
+  const dust = (i: 0 | 1) => 10n ** BigInt(Math.max(0, decOf(i) - 4));
+
   const register = (name: string, lowP: number, highP: number, bond: string) =>
     run("Entering the arena", async () => {
       if (!dep) return;
-      const lower = priceToTick(lowP, dep.tickSpacing, "floor");
-      const upper = priceToTick(highP, dep.tickSpacing, "ceil");
-      const bondWad = toWad(bond);
-      await ensureFunds(actor, 10n ** 18n, bondWad + 10n ** 21n);
-      await send(actor, { address: dep.hook, abi: HOOK_ABI, functionName: "register", args: [name, lower, upper, bondWad] });
-      return `${name} is in. Their paper portfolio starts at 1,000 tUSD and is eligible from the next epoch.`;
+      const [lower, upper] = rangeToTicks(lowP, highP, dep.tickSpacing);
+      const bondUnits = toUnits(bond, decOf(1));
+      await ensureFunds(actor, dust(0), bondUnits + dust(1));
+      await send(actor, { address: dep.hook, abi: HOOK_ABI, functionName: "register", args: [name, lower, upper, bondUnits] });
+      return `${name} is in. Their paper portfolio starts at an index of 1,000 and is eligible from the next epoch.`;
     });
 
   const declare = (id: number, lowP: number, highP: number, isInc: boolean) =>
     run("Changing range", async () => {
       if (!dep) return;
-      const lower = priceToTick(lowP, dep.tickSpacing, "floor");
-      const upper = priceToTick(highP, dep.tickSpacing, "ceil");
-      await ensureFunds(actor, 10n ** 18n, 10n ** 18n);
+      const [lower, upper] = rangeToTicks(lowP, highP, dep.tickSpacing);
+      await ensureFunds(actor, dust(0), dust(1));
       await send(actor, { address: dep.hook, abi: HOOK_ABI, functionName: "declareRange", args: [BigInt(id), lower, upper] });
       return isInc ? "Range changed. The vault's liquidity moved with it." : "Range changed. Your paper portfolio paid the switch cost.";
     });
@@ -345,11 +384,12 @@ export default function App({ view = "arena" }: { view?: View }) {
       return "You left the arena. Bond returned.";
     });
 
-  const deposit = (eth: string, usd: string) =>
+  const deposit = (baseAmt: string, quoteAmt: string) =>
     run("Depositing", async () => {
       if (!dep) return;
-      const a0 = toWad(eth);
-      const a1 = toWad(usd);
+      const b = baseIndex();
+      const a0 = toUnits(b === 0 ? baseAmt : quoteAmt, decOf(0));
+      const a1 = toUnits(b === 0 ? quoteAmt : baseAmt, decOf(1));
       await ensureFunds(actor, a0, a1);
       await send(actor, { address: dep.hook, abi: HOOK_ABI, functionName: "deposit", args: [a0, a1, 0n] });
       return "Deposited. Your liquidity is now managed by whoever holds the seat.";
@@ -387,9 +427,12 @@ export default function App({ view = "arena" }: { view?: View }) {
   const mine = noSigner
     ? []
     : snap.curators.filter((c) => c.active && !c.benchmark && c.owner.toLowerCase() === addressOf(actor).toLowerCase());
-  const navNum = fromWad(snap.vault.nav);
+  // the hook books value in token1; show it in the quote asset so every figure reads in one unit
+  const navNum = t1InQuote(fromT1(snap.vault.nav), snap.price);
   const sharePrice = snap.vault.supply > 0n ? navNum / fromWad(snap.vault.supply) : 1;
   const myValue = fromWad(snap.me.shares) * sharePrice;
+  const Q = quoteSym();
+  const S1 = symOf(1);
 
   return (
     <div className="app">
@@ -400,7 +443,7 @@ export default function App({ view = "arena" }: { view?: View }) {
         </div>
         <dl className="vitals">
           <div title={`Epochs settle at the time-weighted average price, now ${fmt(snap.settlePrice, 2)}.`}>
-            <dt>tETH price</dt>
+            <dt>{baseSym()} price</dt>
             <dd>{fmt(snap.price, 2)}</dd>
           </div>
           <div>
@@ -446,10 +489,13 @@ export default function App({ view = "arena" }: { view?: View }) {
             </button>
           </div>
         </div>
-        {IS_WALLET && dep.reactive && (
+        {IS_WALLET && (dep.pulse || dep.reactive) && (
           <p className="muted small keeper-note">
             Settled automatically by{" "}
-            <a href={addressUrl(dep.keeper ?? "")} target="_blank" rel="noreferrer">a Reactive Network keeper</a>, no bot.
+            <a href={addressUrl(dep.pulse?.keeper ?? dep.keeper ?? "")} target="_blank" rel="noreferrer">
+              Oorka Pulse on Reactive Network
+            </a>
+            , seconds after each epoch ends. Real {symOf(0)} and {symOf(1)}, no mock tokens.
           </p>
         )}
         <Status busy={busy} toast={toast} />
@@ -493,11 +539,11 @@ export default function App({ view = "arena" }: { view?: View }) {
                       )}
                     </td>
                     <td className="range">
-                      {fmt(tickToPrice(c.lower), 0)} to {fmt(tickToPrice(c.upper), 0)}
+                      {fmtRange(c.lower, c.upper)}
                     </td>
                     <td className="num">
                       <Spark values={history[c.id] ?? []} color={colorOf(c)} />
-                      {fmt(fromWad(c.nav), 2)}
+                      {fmt(fromT1(c.nav), 2)}
                     </td>
                     <td className="num">{fmtPct(fromWad(c.epochGrowthWad) - 1, 3)}</td>
                     <td>
@@ -509,7 +555,7 @@ export default function App({ view = "arena" }: { view?: View }) {
                         <Pips filled={c.streak} total={snap.config.winStreak} color={colorOf(c)} />
                       )}
                     </td>
-                    <td className="num">{c.benchmark ? "–" : fmt(fromWad(c.bond), 0)}</td>
+                    <td className="num">{c.benchmark ? "–" : `${fmt(fromT1(c.bond), digitsFor(S1))} ${S1}`}</td>
                   </tr>
                 ))}
             </tbody>
@@ -538,16 +584,21 @@ export default function App({ view = "arena" }: { view?: View }) {
         <section className="panel">
           <h2>Vault</h2>
           <div className="figures">
-            <Figure label="Total value" value={`${fmt(navNum, 0)} tUSD`} />
-            <Figure label="Share price" value={fmt(sharePrice, 4)} />
-            <Figure label="Your position" value={`${fmt(myValue, 0)} tUSD`} />
+            <Figure label="Total value" value={`${fmt(navNum, 2)} ${Q}`} />
+            <Figure label="Share price" value={`${fmt(sharePrice, 4)} ${Q}`} />
+            <Figure label="Your position" value={`${fmt(myValue, 2)} ${Q}`} />
           </div>
           <p className="muted small">
-            Managed by {incumbent?.name ?? "nobody"} at {fmt(tickToPrice(snap.vault.lower), 0)} to{" "}
-            {fmt(tickToPrice(snap.vault.upper), 0)}. Wallet: {fmt(fromWad(snap.me.eth), 2)} tETH, {fmt(fromWad(snap.me.usd), 0)} tUSD.
+            Managed by {incumbent?.name ?? "nobody"} at {fmtRange(snap.vault.lower, snap.vault.upper)} {Q} per {baseSym()}.
+            {!noSigner && (
+              <>
+                {" "}Wallet: {fmt(fromUnits(snap.me.b0, decOf(0)), digitsFor(symOf(0)))} {symOf(0)},{" "}
+                {fmt(fromUnits(snap.me.b1, decOf(1)), digitsFor(S1))} {S1}.
+              </>
+            )}
           </p>
           {benchmark && <BenchCompare bench={snap.bench} name={benchmark.name} />}
-          <DepositForm busy={!!busy} onDeposit={deposit} />
+          <DepositForm busy={!!busy} onDeposit={deposit} tradeBase={dep.tradeBase ?? 1} price={snap.price} />
           <div className="row">
             <span className="muted small">Withdraw</span>
             {[0.25, 0.5, 1].map((f) => (
@@ -567,7 +618,7 @@ export default function App({ view = "arena" }: { view?: View }) {
               <RangeEditor key={c.id} c={c} price={snap.price} busy={!!busy} onDeclare={declare} onExit={exit} />
             ))
           ) : (
-            <RegisterForm price={snap.price} busy={!!busy} minBond={fromWad(snap.config.minBond)} onRegister={register} />
+            <RegisterForm price={snap.price} busy={!!busy} minBond={fromT1(snap.config.minBond)} onRegister={register} />
           )}
           {noSigner && <p className="muted small">Connect a wallet (top right) to enter or manage a range.</p>}
         </section>
@@ -592,21 +643,21 @@ export default function App({ view = "arena" }: { view?: View }) {
     const block = ev.blockNumber as bigint;
     switch (ev.eventName) {
       case "Takeover":
-        return { key, block, tone: "win", text: `${name(a.newId)} took the seat from ${name(a.oldId)}. ${fmt(fromWad(a.slashed), 0)} tUSD of bond went to depositors.` };
+        return { key, block, tone: "win", text: `${name(a.newId)} took the seat from ${name(a.oldId)}. ${fmt(fromT1(a.slashed), digitsFor(symOf(1)))} ${symOf(1)} of bond went to depositors.` };
       case "EpochSettled":
         return { key, block, text: `Epoch ${a.epoch} settled. Seat holder returned ${fmtPct(fromWad(a.incumbentGrowthWad) - 1, 3)}.` };
       case "CuratorRegistered":
-        return { key, block, text: `${a.name} entered at ${fmt(tickToPrice(Number(a.lower)), 0)} to ${fmt(tickToPrice(Number(a.upper)), 0)}.` };
+        return { key, block, text: `${a.name} entered at ${fmtRange(Number(a.lower), Number(a.upper))}.` };
       case "RangeDeclared":
-        return { key, block, text: `${name(a.id)} moved to ${fmt(tickToPrice(Number(a.lower)), 0)} to ${fmt(tickToPrice(Number(a.upper)), 0)}.` };
+        return { key, block, text: `${name(a.id)} moved to ${fmtRange(Number(a.lower), Number(a.upper))}.` };
       case "BenchmarkRegistered":
-        return { key, block, text: `Benchmark set at ${fmt(tickToPrice(Number(a.lower)), 0)} to ${fmt(tickToPrice(Number(a.upper)), 0)}. It never moves.` };
+        return { key, block, text: `Benchmark set at ${fmtRange(Number(a.lower), Number(a.upper))}. It never moves.` };
       case "PerformanceFee":
         return {
           key,
           block,
           tone: "win",
-          text: `${name(a.curatorId)} earned a ${fmt(fromWad(a.value), 2)} tUSD performance fee for beating the benchmark.`,
+          text: `${name(a.curatorId)} earned a ${fmt(t1InQuote(fromT1(a.value), snap?.price ?? 0), 4)} ${quoteSym()} performance fee for beating the benchmark.`,
         };
       case "BenchmarkScored": {
         const v = fromWad(a.vaultGrowthWad) - 1;
@@ -623,9 +674,9 @@ export default function App({ view = "arena" }: { view?: View }) {
       case "CuratorExited":
         return { key, block, text: `${name(a.id)} left the arena.` };
       case "Deposited":
-        return { key, block, text: `Deposit of ${fmt(fromWad(a.amount0), 2)} tETH and ${fmt(fromWad(a.amount1), 0)} tUSD.` };
+        return { key, block, text: `Deposit of ${amounts(a.amount0, a.amount1)}.` };
       case "Withdrawn":
-        return { key, block, text: `Withdrawal of ${fmt(fromWad(a.amount0), 2)} tETH and ${fmt(fromWad(a.amount1), 0)} tUSD.` };
+        return { key, block, text: `Withdrawal of ${amounts(a.amount0, a.amount1)}.` };
       default:
         return null;
     }
@@ -633,6 +684,8 @@ export default function App({ view = "arena" }: { view?: View }) {
 }
 
 // ---------------------------------------------------------------------- pieces
+const amounts = (a0: bigint, a1: bigint) =>
+  `${fmt(fromUnits(a0, decOf(0)), digitsFor(symOf(0)))} ${symOf(0)} and ${fmt(fromUnits(a1, decOf(1)), digitsFor(symOf(1)))} ${symOf(1)}`;
 const LOG_API: Record<number, string> = { 1301: "https://unichain-sepolia.blockscout.com/api" };
 
 /** The hook's events from an explorer log API, decoded like viem's getContractEvents. Null if unavailable. */
@@ -743,24 +796,34 @@ function Spark({ values, color }: { values: number[]; color: string }) {
   );
 }
 
-function DepositForm({ busy, onDeposit }: { busy: boolean; onDeposit: (eth: string, usd: string) => void }) {
-  const [eth, setEth] = useState("5");
-  const [usd, setUsd] = useState("15000");
+function DepositForm({
+  busy,
+  onDeposit,
+  tradeBase,
+  price,
+}: {
+  busy: boolean;
+  onDeposit: (baseAmt: string, quoteAmt: string) => void;
+  tradeBase: number;
+  price: number;
+}) {
+  const [baseAmt, setBase] = useState(String(tradeBase));
+  const [quoteAmt, setQuote] = useState((tradeBase * (price || 1)).toFixed(2));
   return (
     <form
       className="form"
       onSubmit={(e) => {
         e.preventDefault();
-        onDeposit(eth, usd);
+        onDeposit(baseAmt, quoteAmt);
       }}
     >
       <label>
-        tETH
-        <input inputMode="decimal" value={eth} onChange={(e) => setEth(e.target.value)} />
+        {baseSym()}
+        <input inputMode="decimal" value={baseAmt} onChange={(e) => setBase(e.target.value)} />
       </label>
       <label>
-        tUSD
-        <input inputMode="decimal" value={usd} onChange={(e) => setUsd(e.target.value)} />
+        {quoteSym()}
+        <input inputMode="decimal" value={quoteAmt} onChange={(e) => setQuote(e.target.value)} />
       </label>
       <button className="primary" disabled={busy}>Deposit</button>
     </form>
@@ -780,7 +843,7 @@ function RegisterForm({
 }) {
   const [name, setName] = useState("Narrow Nina");
   const [width, setWidth] = useState(5);
-  const [bond, setBond] = useState(String(Math.max(100, minBond)));
+  const [bond, setBond] = useState(String(pair().mintable ? Math.max(100, minBond) : minBond));
   const lo = price * (1 - width / 100);
   const hi = price * (1 + width / 100);
   return (
@@ -791,7 +854,7 @@ function RegisterForm({
         onRegister(name, lo, hi, bond);
       }}
     >
-      <p className="muted small">Scored on what your range would earn on 1,000 tUSD. Only the bond is at risk.</p>
+      <p className="muted small">Scored as a paper portfolio that starts at an index of 1,000. Only the bond is at risk.</p>
       <label>
         Curator name
         <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
@@ -801,10 +864,10 @@ function RegisterForm({
         <input type="range" min={1} max={40} value={width} onChange={(e) => setWidth(Number(e.target.value))} />
       </label>
       <p className="small">
-        {fmt(lo, 0)} to {fmt(hi, 0)} tUSD per tETH
+        {fmt(lo, 0)} to {fmt(hi, 0)} {quoteSym()} per {baseSym()}
       </p>
       <label>
-        Bond (tUSD)
+        Bond ({symOf(1)})
         <input inputMode="decimal" value={bond} onChange={(e) => setBond(e.target.value)} />
       </label>
       <button className="primary" disabled={busy || !name.trim()}>Enter the arena</button>
@@ -825,7 +888,10 @@ function RangeEditor({
   onDeclare: (id: number, lo: number, hi: number, isInc: boolean) => void;
   onExit: (id: number) => void;
 }) {
-  const current = useMemo(() => Math.round(((tickToPrice(c.upper) - tickToPrice(c.lower)) / 2 / price) * 100) || 5, [c, price]);
+  const current = useMemo(() => {
+    const [lo, hi] = rangePrices(c.lower, c.upper);
+    return Math.round(((hi - lo) / 2 / price) * 100) || 5;
+  }, [c, price]);
   const [width, setWidth] = useState(current);
   const ref = useRef(c.id);
   useEffect(() => {
@@ -843,7 +909,7 @@ function RangeEditor({
         <strong>{c.name}</strong> {c.incumbent ? "holds the seat. Moving your range moves the vault." : "is challenging."}
       </p>
       <p className="muted small">
-        Now at {fmt(tickToPrice(c.lower), 0)} to {fmt(tickToPrice(c.upper), 0)}. Moving costs the switch fee.
+        Now at {fmtRange(c.lower, c.upper)}. Moving costs the switch fee.
       </p>
       <label>
         New width: ±{width}% around {fmt(price, 0)}

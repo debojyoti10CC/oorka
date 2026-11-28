@@ -86,7 +86,7 @@ export default function Landing() {
             <span className="n">02 · Score</span>
             <h3 className="h3">A paper portfolio, marked honestly.</h3>
             <p>
-              Each curator runs 1,000 tUSD of virtual liquidity: real fees plus real price exposure. It's marked at the
+              Each curator runs a 1,000-unit paper portfolio of virtual liquidity: real fees plus real price exposure. It's marked at the
               epoch's time-weighted price and compared against a passive benchmark.
             </p>
           </div>

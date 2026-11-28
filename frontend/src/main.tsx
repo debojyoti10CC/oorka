@@ -20,7 +20,7 @@ const PRODUCT: MenuGroup[] = [
   {
     label: "Use it",
     items: [
-      { title: "Swap", desc: "Trade tETH and tUSD with an exact on-chain quote.", href: "#/swap", tone: "violet", art: "swap" },
+      { title: "Swap", desc: "Trade USDC and WETH with an exact on-chain quote.", href: "#/swap", tone: "violet", art: "swap" },
       { title: "Vault", desc: "Deposit once. The winning curator manages it.", href: "#/vault", tone: "blue", art: "vault" },
     ],
   },

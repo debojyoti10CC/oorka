@@ -6,6 +6,7 @@ import {
   IS_WALLET,
   MARKET_SLOT,
   SWAP_ABI,
+  WETH_ABI,
   addressOf,
   loadDeployments,
   publicClient,
@@ -14,11 +15,27 @@ import {
   txUrl,
   type Deployments,
 } from "./lib/chain";
-import { MAX_SQRT_PRICE_LIMIT, MIN_SQRT_PRICE_LIMIT, fmt, fromWad, sqrtPriceToPrice, tickToPrice, toWad } from "./lib/math";
+import {
+  MAX_SQRT_PRICE_LIMIT,
+  MIN_SQRT_PRICE_LIMIT,
+  baseIndex,
+  baseSym,
+  decOf,
+  digitsFor,
+  fmt,
+  fmtRange,
+  fromUnits,
+  pair,
+  quoteSym,
+  rangePrices,
+  sqrtPriceToPrice,
+  symOf,
+  toUnits,
+} from "./lib/math";
 import { colorOf, type CuratorRow } from "./Lanes";
 import { useWallet } from "./lib/wallet";
 
-type Side = "eth" | "usd"; // what you sell
+type Side = "base" | "quote"; // what you sell
 
 /** PoolSwapTest returns a packed BalanceDelta: amount0 in the high 128 bits, amount1 in the low 128 bits. */
 const unpack = (d: bigint) => ({ a0: BigInt.asIntN(128, d >> 128n), a1: BigInt.asIntN(128, d) });
@@ -29,9 +46,9 @@ export default function Swap() {
   const [price, setPrice] = useState(0);
   const [curators, setCurators] = useState<CuratorRow[]>([]);
   const [vault, setVault] = useState<{ lower: number; upper: number } | null>(null);
-  const [bal, setBal] = useState<{ eth: bigint; usd: bigint } | null>(null);
-  const [sell, setSell] = useState<Side>("eth");
-  const [amount, setAmount] = useState("1");
+  const [bal, setBal] = useState<{ b0: bigint; b1: bigint } | null>(null);
+  const [sell, setSell] = useState<Side>("base");
+  const [amount, setAmount] = useState("");
   const [quote, setQuote] = useState<{ out: bigint; forIn: string; side: Side } | null>(null);
   const [quoteErr, setQuoteErr] = useState<string | null>(null);
   const [quoting, setQuoting] = useState(false);
@@ -46,8 +63,17 @@ export default function Swap() {
   const key = dep ? { currency0: dep.token0, currency1: dep.token1, fee: dep.fee, tickSpacing: dep.tickSpacing, hooks: dep.hook } : null;
 
   useEffect(() => {
-    loadDeployments().then(setDep).catch((e) => setLoadErr(String(e.message ?? e)));
+    loadDeployments()
+      .then((d) => {
+        setDep(d);
+        setAmount(String(d.tradeBase ?? 1));
+      })
+      .catch((e) => setLoadErr(String(e.message ?? e)));
   }, []);
+
+  // which currency index is being sold, and which is bought
+  const inIdx: 0 | 1 = sell === "base" ? baseIndex() : baseIndex() === 0 ? 1 : 0;
+  const outIdx: 0 | 1 = inIdx === 0 ? 1 : 0;
 
   // pool state
   useEffect(() => {
@@ -101,7 +127,7 @@ export default function Swap() {
       publicClient.readContract({ address: dep.token0, abi: ERC20_ABI, functionName: "balanceOf", args: [me] }),
       publicClient.readContract({ address: dep.token1, abi: ERC20_ABI, functionName: "balanceOf", args: [me] }),
     ]);
-    setBal({ eth: eth as bigint, usd: usd as bigint });
+    setBal({ b0: eth as bigint, b1: usd as bigint });
   };
   useEffect(() => {
     readBalances().catch(() => {});
@@ -111,11 +137,11 @@ export default function Swap() {
   // exact quote, debounced
   const amountWad = useMemo(() => {
     try {
-      return toWad(amount);
+      return toUnits(amount, decOf(inIdx));
     } catch {
       return null;
     }
-  }, [amount]);
+  }, [amount, inIdx]);
   useEffect(() => {
     setQuote(null);
     setQuoteErr(null);
@@ -124,7 +150,7 @@ export default function Swap() {
     setQuoting(true);
     const t = setTimeout(async () => {
       try {
-        const zeroForOne = sell === "eth";
+        const zeroForOne = inIdx === 0;
         const { result } = await publicClient.simulateContract({
           account: quoter,
           address: dep.swapRouter,
@@ -151,17 +177,23 @@ export default function Swap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dep, amountWad, sell, quoter]);
 
-  const inSym = sell === "eth" ? "tETH" : "tUSD";
-  const outSym = sell === "eth" ? "tUSD" : "tETH";
-  const inBal = bal ? (sell === "eth" ? bal.eth : bal.usd) : null;
-  const outNum = quote ? fromWad(quote.out) : 0;
+  const inSym = symOf(inIdx);
+  const outSym = symOf(outIdx);
+  const inBal = bal ? (inIdx === 0 ? bal.b0 : bal.b1) : null;
+  const outNum = quote ? fromUnits(quote.out, decOf(outIdx)) : 0;
   const inNum = Number(amount) || 0;
-  const execPrice = quote && inNum > 0 ? (sell === "eth" ? outNum / inNum : inNum / outNum) : 0;
-  const impact = execPrice && price ? (sell === "eth" ? (price - execPrice) / price : (execPrice - price) / price) : 0;
+  // execution price in quote per base, whichever way the trade goes
+  const execPrice = quote && inNum > 0 && outNum > 0 ? (sell === "base" ? outNum / inNum : inNum / outNum) : 0;
+  const impact = execPrice && price ? (sell === "base" ? (price - execPrice) / price : (execPrice - price) / price) : 0;
   const insufficient = inBal !== null && amountWad !== null && amountWad > inBal;
-
-  const inRange = curators.filter((c) => c.active && price >= tickToPrice(c.lower) && price <= tickToPrice(c.upper));
-  const outRange = curators.filter((c) => c.active && !(price >= tickToPrice(c.lower) && price <= tickToPrice(c.upper)));
+  const isIn = (c: CuratorRow) => {
+    const [lo, hi] = rangePrices(c.lower, c.upper);
+    return price >= lo && price <= hi;
+  };
+  const inRange = curators.filter((c) => c.active && isIn(c));
+  const outRange = curators.filter((c) => c.active && !isIn(c));
+  const weth = dep?.weth;
+  const wethIdx: 0 | 1 | null = dep && weth ? (dep.token0.toLowerCase() === weth.toLowerCase() ? 0 : 1) : null;
 
   const run = async (label: string, fn: () => Promise<{ text: string; tx?: string }>) => {
     setBusy(label);
@@ -180,18 +212,25 @@ export default function Swap() {
   const faucet = () =>
     run("Minting test tokens", async () => {
       if (!dep || !me) throw new Error("Connect a wallet first.");
-      await send(MARKET_SLOT, { address: dep.token0, abi: ERC20_ABI, functionName: "mint", args: [me, toWad("100")] });
-      const r = await send(MARKET_SLOT, { address: dep.token1, abi: ERC20_ABI, functionName: "mint", args: [me, toWad("300000")] });
-      return { text: "Minted 100 tETH and 300,000 tUSD to your wallet.", tx: r.transactionHash };
+      await send(MARKET_SLOT, { address: dep.token0, abi: ERC20_ABI, functionName: "mint", args: [me, toUnits("100", decOf(0))] });
+      const r = await send(MARKET_SLOT, { address: dep.token1, abi: ERC20_ABI, functionName: "mint", args: [me, toUnits("300000", decOf(1))] });
+      return { text: `Minted test ${symOf(0)} and ${symOf(1)} to your wallet.`, tx: r.transactionHash };
+    });
+
+  const wrap = (eth: string) =>
+    run("Wrapping ETH", async () => {
+      if (!dep || !me || !weth) throw new Error("Connect a wallet first.");
+      const r = await send(MARKET_SLOT, { address: weth, abi: WETH_ABI as any, functionName: "deposit", args: [], value: toUnits(eth, 18) });
+      return { text: `Wrapped ${eth} ETH into WETH.`, tx: r.transactionHash };
     });
 
   const doSwap = () =>
     run("Swapping", async () => {
       if (!dep || !key || !me || !amountWad) throw new Error("Connect a wallet first.");
-      const token = sell === "eth" ? dep.token0 : dep.token1;
+      const token = inIdx === 0 ? dep.token0 : dep.token1;
       const allowance = (await publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: "allowance", args: [me, dep.swapRouter] })) as bigint;
       if (allowance < amountWad) await send(MARKET_SLOT, { address: token, abi: ERC20_ABI, functionName: "approve", args: [dep.swapRouter, maxUint256] });
-      const zeroForOne = sell === "eth";
+      const zeroForOne = inIdx === 0;
       const r = await send(MARKET_SLOT, {
         address: dep.swapRouter,
         abi: SWAP_ABI,
@@ -203,7 +242,7 @@ export default function Swap() {
           "0x",
         ],
       });
-      return { text: `Swapped ${amount} ${inSym} for about ${fmt(outNum, sell === "eth" ? 2 : 4)} ${outSym}. Every in-range curator just earned fees on it.`, tx: r.transactionHash };
+      return { text: `Swapped ${amount} ${inSym} for about ${fmt(outNum, digitsFor(outSym))} ${outSym}. Every in-range curator just earned fees on it.`, tx: r.transactionHash };
     });
 
   if (!dep)
@@ -227,7 +266,9 @@ export default function Swap() {
     <main className="app swap-page">
       <header className="swap-head">
         <h1 className="wordmark">Swap</h1>
-        <p className="tagline">Trade tETH and tUSD through the Oorka pool. Every swap is fee growth the hook uses to score curators.</p>
+        <p className="tagline">
+          Trade {baseSym()} and {quoteSym()} through the Oorka pool. Every swap is fee growth the hook uses to score curators.
+        </p>
       </header>
 
       <div className="swap-grid">
@@ -236,8 +277,8 @@ export default function Swap() {
             <div className="swap-row-top">
               <label htmlFor="swap-in">You sell</label>
               {inBal !== null && (
-                <button className="link-btn" onClick={() => setAmount(fromWad(inBal).toString())} disabled={inBal === 0n}>
-                  Balance {fmt(fromWad(inBal), sell === "eth" ? 4 : 2)} · Max
+                <button className="link-btn" onClick={() => setAmount(fromUnits(inBal, decOf(inIdx)).toString())} disabled={inBal === 0n}>
+                  Balance {fmt(fromUnits(inBal, decOf(inIdx)), digitsFor(inSym))} · Max
                 </button>
               )}
             </div>
@@ -259,8 +300,8 @@ export default function Swap() {
             className="swap-flip"
             aria-label={`Switch to selling ${outSym}`}
             onClick={() => {
-              setSell(sell === "eth" ? "usd" : "eth");
-              if (quote) setAmount(fromWad(quote.out).toFixed(sell === "eth" ? 2 : 4));
+              setSell(sell === "base" ? "quote" : "base");
+              if (quote) setAmount(fromUnits(quote.out, decOf(outIdx)).toFixed(digitsFor(outSym)));
             }}
           >
             ↓↑
@@ -273,7 +314,7 @@ export default function Swap() {
             </div>
             <div className="swap-row">
               <output className="swap-amount out" aria-live="polite">
-                {quote ? fmt(outNum, sell === "eth" ? 2 : 4) : "–"}
+                {quote ? fmt(outNum, digitsFor(outSym)) : "–"}
               </output>
               <span className="token">{outSym}</span>
             </div>
@@ -282,7 +323,7 @@ export default function Swap() {
           <dl className="swap-facts">
             <div>
               <dt>Rate</dt>
-              <dd>{execPrice ? `1 tETH = ${fmt(execPrice, 2)} tUSD` : "–"}</dd>
+              <dd>{execPrice ? `1 ${baseSym()} = ${fmt(execPrice, 2)} ${quoteSym()}` : "–"}</dd>
             </div>
             <div>
               <dt>Price impact (incl. fee)</dt>
@@ -302,10 +343,24 @@ export default function Swap() {
           <button className="primary swap-cta" aria-busy={busy === "Swapping"} disabled={action.disabled || !!busy} onClick={doSwap}>
             {action.label}
           </button>
-          {!noSigner && (
+          {!noSigner && pair().mintable && (
             <button className="ghost swap-faucet" aria-busy={busy === "Minting test tokens"} disabled={!!busy} onClick={faucet}>
               Get test tokens
             </button>
+          )}
+          {!noSigner && !pair().mintable && (
+            <div className="swap-funding">
+              {wethIdx !== null && (
+                <button className="ghost" aria-busy={busy === "Wrapping ETH"} disabled={!!busy} onClick={() => wrap("0.001")}>
+                  Wrap 0.001 ETH to WETH
+                </button>
+              )}
+              {Object.entries(dep.faucets ?? {}).map(([sym, url]) => (
+                <a key={sym} className="btn ghost" href={url} target="_blank" rel="noreferrer">
+                  Get testnet {sym} ↗
+                </a>
+              ))}
+            </div>
           )}
           <p className={`status ${toast?.tone ?? "idle"}`} role="status">
             {busy ? `${busy}…` : toast?.text}
@@ -329,7 +384,7 @@ export default function Swap() {
             </div>
             <div className="figure">
               <span className="muted small">Vault range</span>
-              <strong>{vault ? `${fmt(tickToPrice(vault.lower), 0)}–${fmt(tickToPrice(vault.upper), 0)}` : "–"}</strong>
+              <strong>{vault ? fmtRange(vault.lower, vault.upper, 0, "–") : "–"}</strong>
             </div>
           </div>
           <p className="muted small">
@@ -345,7 +400,7 @@ export default function Swap() {
                 {c.incumbent && <span className="badge">seat</span>}
                 {c.benchmark && <span className="badge soft">benchmark</span>}
                 <span className="muted range">
-                  {fmt(tickToPrice(c.lower), 0)}–{fmt(tickToPrice(c.upper), 0)}
+                  {fmtRange(c.lower, c.upper, 0, "–")}
                 </span>
               </li>
             ))}
@@ -360,7 +415,7 @@ export default function Swap() {
                     <span className="dot" style={{ background: colorOf(c) }} />
                     {c.name}
                     <span className="muted range">
-                      {fmt(tickToPrice(c.lower), 0)}–{fmt(tickToPrice(c.upper), 0)}
+                      {fmtRange(c.lower, c.upper, 0, "–")}
                     </span>
                   </li>
                 ))}

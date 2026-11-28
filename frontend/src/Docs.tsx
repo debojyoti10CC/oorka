@@ -48,7 +48,7 @@ export default function Docs() {
         <h2 id="overview">Overview</h2>
         <ul>
           <li>
-            <strong>Depositors</strong> put tETH/tUSD into the vault and get oLP shares. Their liquidity sits at the seat
+            <strong>Depositors</strong> put USDC and WETH into the vault and get oLP shares. Their liquidity sits at the seat
             holder's range.
           </li>
           <li>
@@ -79,13 +79,13 @@ export default function Docs() {
 
         <h2 id="scoring">Scoring</h2>
         <p>
-          Each curator has a paper portfolio worth 1,000 tUSD when the range is declared. Its virtual liquidity
+          Each curator has a paper portfolio worth an index of 1,000 (in the pool's token1) when the range is declared. Its virtual liquidity
           <code>vL</code> is chosen so the position is worth exactly that NAV.
         </p>
         <pre>
           <code>{`fees     = (feeGrowthInside_now - feeGrowthInside_last) * vL / 2^128
 position = amounts(vL, range, price)
-NAV      = value(position + fees + cash, price)            // in tUSD
+NAV      = value(position + fees + cash, price)            // in token1 (WETH)
 growth   = NAV_end / NAV_epochStart`}</code>
         </pre>
         <p>

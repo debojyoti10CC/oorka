@@ -4,30 +4,33 @@
   "poolManager": "0x00b036b58a818b1bc34d502d3fe730db729e62ac",
   "swapRouter": "0xa93b93a962d8b00d409f084f2262c0a773b2e0dd",
   "lpRouter": "0xbe8e4ed28186051fecf425ba945a4a687f827c77",
-  "hook": "0xbeEcbe71d831880f2038Bc35b613e100F1f010A0",
-  "keeper": "0x53b31469cf03ae9f0042c7d6cbeed46750e22da5",
+  "hook": "0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0",
+  "keeper": null,
   "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1",
-  "token0": "0x64A3C35b31f04e3c92a45E9d003468e4574810e6",
-  "token1": "0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C",
+  "token0": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+  "token1": "0x4200000000000000000000000000000000000006",
+  "token0Symbol": "USDC",
+  "token1Symbol": "WETH",
+  "token0Decimals": 6,
+  "token1Decimals": 18,
+  "base": 1,
+  "mintable": false,
+  "weth": "0x4200000000000000000000000000000000000006",
+  "faucets": {
+    "USDC": "https://faucet.circle.com"
+  },
+  "tradeBase": 0.00013,
   "fee": 3000,
   "tickSpacing": 60,
   "deployer": "0x0B2B7dd143294691fc41a8b3133ac7c0524918dA",
-  "deployedAt": "2026-11-26T20:48:56.031Z",
-  "deployBlock": 68873661,
-  "reactive": {
-    "chainId": 5318007,
-    "rpcUrl": "https://lasna-rpc.rnk.dev/",
-    "contract": "0x86c807a7a56c63472d52c46ebd2441d2067d7450",
-    "cronTopic": "Cron1000",
-    "ticksPerPoke": 1,
-    "deployTx": "0xb9195710c17c815117e98744c7391108095653e9498e279549e4b62d4a4a6463"
-  },
+  "deployedAt": "2026-11-28T17:36:04.028Z",
+  "deployBlock": 69034891,
   "pulse": {
     "chainId": 5318007,
-    "contract": "0xdbb33964d494e7cabfb90656d682f3b09f42ba9d",
-    "keeper": "0xcfb0d5e9f4c4935782fd4d24d5d77af62919bf97",
-    "poolId": "0x29eaf896ba9c585b2535ce439b1df1adb9c1d8f2c865b4764dc51eaccd237c4b",
+    "contract": "0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa",
+    "keeper": "0x6716dad1ad8a91ce35b368466948d25efe48e3ee",
+    "poolId": "0x812a0fc62bc1d8021aaf6ee3fb5ac0d0adec725120f3fe6bec77a9508199382a",
     "cooldown": 30,
-    "deployTx": "0x719b5e4ccf13a653585f218b2fbb4f31c9c805ffdd41f1221d56b397c28e1813"
+    "deployTx": "0x0049e58411dca1b18d788d03cbe671c8e9921fffe014ee2ffd5e34ed5f70a076"
   }
 }
