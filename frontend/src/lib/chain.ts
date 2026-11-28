@@ -181,8 +181,20 @@ type Call = { address: Address; abi: Abi; functionName: string; args?: readonly 
 export async function send(slot: number, call: Call) {
   if (IS_WALLET && (!connected || !injected)) throw new Error("Connect a wallet first.");
   const account = IS_WALLET ? connected! : accountOf(slot);
-  const { request } = await publicClient.simulateContract({ ...call, account } as any);
-  const est = await publicClient.estimateContractGas({ ...call, account } as any);
+  // A public RPC can sit a block behind the receipt of the transaction we just sent (an approve, a wrap), so a
+  // simulation right after it may still see the old state. Retry briefly before calling it a real revert.
+  let request: any;
+  let est = 0n;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      ({ request } = await publicClient.simulateContract({ ...call, account } as any));
+      est = await publicClient.estimateContractGas({ ...call, account } as any);
+      break;
+    } catch (err) {
+      if (attempt >= 3) throw err;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
   const gas = (est * 3n) / 2n + 120_000n;
   const wallet = IS_WALLET ? injected! : localWallet(slot);
   const hash = await wallet.writeContract({ ...(request as any), account, gas, chain });
