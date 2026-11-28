@@ -86,13 +86,15 @@ flowchart TB
 
 ## Live on testnet
 
+> **Track record (28 Nov 2026):** 91 epochs settled with no human transaction, **10 takeovers**, 10 performance fees and 11 vault migrations, all on-chain and all automatic. Zero debt on both reactive contracts.
+
 <table>
 <tr>
-<td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/arena"><img src="docs/readme/arena.png" alt="Arena"></a><p align="center"><b>Arena</b>: lanes, standings, the on-chain record</p></td>
-<td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/vault"><img src="docs/readme/vault.png" alt="Vault"></a><p align="center"><b>Vault</b>: deposit, withdraw, vault vs benchmark</p></td>
+<td width="50%"><a href="https://oorka.djyo.tech/#/arena"><img src="docs/readme/arena.png" alt="Arena"></a><p align="center"><b>Arena</b>: lanes, standings, the on-chain record</p></td>
+<td width="50%"><a href="https://oorka.djyo.tech/#/vault"><img src="docs/readme/vault.png" alt="Vault"></a><p align="center"><b>Vault</b>: deposit, withdraw, vault vs benchmark</p></td>
 </tr>
 <tr>
-<td width="50%"><a href="https://debojyoti10cc.github.io/oorka/#/swap"><img src="docs/readme/swap.jpg" alt="Swap"></a><p align="center"><b>Swap</b>: exact quotes from the live pool, and which curators your fee scores</p></td>
+<td width="50%"><a href="https://oorka.djyo.tech/#/swap"><img src="docs/readme/swap.jpg" alt="Swap"></a><p align="center"><b>Swap</b>: exact quotes from the live pool, and which curators your fee scores</p></td>
 <td width="50%"><a href="https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0#internaltx"><img src="docs/readme/uniscan.jpg" alt="Hook on Uniscan"></a><p align="center"><b>Uniscan</b>: the hook's on-chain activity</p></td>
 </tr>
 </table>
@@ -108,7 +110,7 @@ flowchart TB
 | tETH / tUSD test tokens | Unichain Sepolia | [`0x64A3…10e6`](https://sepolia.uniscan.xyz/address/0x64A3C35b31f04e3c92a45E9d003468e4574810e6) / [`0xaCB1…Ac5C`](https://sepolia.uniscan.xyz/address/0xaCB1732744aa55ff155E9BCA3F5B809b60C1Ac5C) |
 
 - **The pool** is tETH/tUSD at about 3,000, seeded with three curators (Passive Pam holds the seat, Tight Tony, Mid Mia), the benchmark and a vault deposit.
-- **Epochs** last 15 minutes. The Reactive CRON contract (Cron1000) pokes the keeper about every 17 minutes, so every ended epoch settles within one tick, with nobody clicking anything.
+- **Epochs** last 15 minutes. **Oorka Pulse** reacts to the pool's own swaps and settles an ended epoch within seconds; the Reactive CRON contract (Cron1000, about every 17 minutes) is the fallback for quiet periods. Nobody clicks anything.
 - **A demo market** ([`market.yml`](.github/workflows/market.yml)) trades in the pool four times an hour with a throwaway key, walking the price through slow waves so tight and wide ranges take turns winning. It never settles: that is the keeper's job alone.
 - Connect any browser wallet on the [live app](https://oorka.djyo.tech) (mirror: [GitHub Pages](https://debojyoti10cc.github.io/oorka/)). Test tokens are minted from the app. All addresses live in [`deployments.1301.json`](frontend/public/deployments.1301.json).
 
