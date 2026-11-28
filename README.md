@@ -398,9 +398,9 @@ flowchart TB
 
 ---
 
-## Partner integrations
+## Integrations
 
-| Partner | What it does in Oorka | Where |
+| Integration | What it does in Oorka | Where |
 |---|---|---|
 | **Reactive Network** | Event-driven settlement: OorkaPulse reacts to the pool's swaps and the hook's events and calls back within seconds; a CRON-driven reactive contract is the fallback. Both call a keeper that settles ended epochs. | [`OorkaPulse.sol`](contracts/src/reactive/OorkaPulse.sol) · [`OorkaPulse.t.sol`](contracts/test/OorkaPulse.t.sol) (15 tests) · [`OorkaReactive.sol`](contracts/src/reactive/OorkaReactive.sol) · [`OorkaKeeper.sol`](contracts/src/reactive/OorkaKeeper.sol) · [`OorkaReactive.t.sol`](contracts/test/OorkaReactive.t.sol) (13 tests) |
 
