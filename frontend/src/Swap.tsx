@@ -131,6 +131,9 @@ export default function Swap() {
   };
   useEffect(() => {
     readBalances().catch(() => {});
+    // public RPCs can lag a block behind a receipt, so keep balances fresh instead of reading them once
+    const t = setInterval(() => readBalances().catch(() => {}), IS_WALLET ? 6000 : 3000);
+    return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dep, me]);
 
