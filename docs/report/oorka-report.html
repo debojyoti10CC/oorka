@@ -184,17 +184,17 @@ html { scroll-behavior: smooth; }
       <h2><span class="n">01</span>Summary</h2>
       <p>Curated LP vaults ask depositors to trust a manager chosen by marketing or a self-reported backtest. Oorka replaces that trust with a continuous, on-chain competition. Any challenger can post a bond and declare a price range. The hook places a dust-sized <strong>probe</strong> position (1e9 liquidity) at that range, which makes the v4 PoolManager track <code>feeGrowthInside</code> there. Each curator is scored as a 1,000 tUSD paper portfolio built from that real fee growth plus real price exposure. A challenger who beats the seat holder for enough consecutive epochs takes the seat, and the vault's real liquidity migrates to their range in the same transaction. The loser's bond is slashed to depositors.</p>
       <p>Settlement is permissionless and is driven by a Reactive Network CRON contract, so the competition runs with nobody watching. A passive benchmark range scores alongside every epoch and answers the depositor's question directly: is the contested seat beating doing nothing? The seat holder's 10% performance fee is paid only on growth above that benchmark and the high-water mark.</p>
-      <div class="callout"><strong>Where it stands.</strong> Contracts are deployed and settling on their own. Over 12 epochs the keeper has settled every one with no human transaction. CI is green with 46 tests and 5 invariants. The app, README and docs are live. What remains is the human part of the submission: progress update, video, thumbnail, final form.</div>
+      <div class="callout"><strong>Where it stands.</strong> Contracts are deployed and settling on their own: 91 epochs and 10 takeovers so far with no human transaction. Oorka Pulse settles seconds after an epoch ends; the CRON keeper is the fallback. CI is green with 46 tests and 5 invariants. The app is live at oorka.djyo.tech and full docs at oorkadocs.djyo.tech. What remains is the human part of the submission: progress update, video, thumbnail, final form.</div>
     </section>
 
     <section id="status">
       <h2><span class="n">02</span>Live status</h2>
-      <p class="sub">Read from chain on 27 Nov 2026, about 00:55 UTC.</p>
+      <p class="sub">Read from chain on 28 Nov 2026, about 00:40 UTC.</p>
       <div class="kpis" role="list">
-        <div class="kpi" role="listitem"><div class="v">12</div><div class="k">current epoch (15 min each)</div></div>
-        <div class="kpi" role="listitem"><div class="v ok">12 / 12</div><div class="k">epochs settled automatically by the keeper</div></div>
-        <div class="kpi" role="listitem"><div class="v">4.43</div><div class="k">lREACT left on the reactive contract, debt 0</div></div>
-        <div class="kpi" role="listitem"><div class="v">~4 days</div><div class="k">of CRON ticks at the current burn rate</div></div>
+        <div class="kpi" role="listitem"><div class="v ok">91</div><div class="k">epochs settled, none by a human</div></div>
+        <div class="kpi" role="listitem"><div class="v">10</div><div class="k">takeovers: the seat changed hands on its own</div></div>
+        <div class="kpi" role="listitem"><div class="v">11</div><div class="k">vault migrations, 10 performance fees paid</div></div>
+        <div class="kpi" role="listitem"><div class="v">0</div><div class="k">debt on Pulse (5.1 lREACT) and CRON (3.4 lREACT)</div></div>
       </div>
       <figure class="shot">
         <img src="arena.png" alt="The live Arena page: lanes for the vault, Passive Pam, Tight Tony, Mid Mia and the benchmark around a price of about 2,957, standings and the on-chain record of settled epochs.">
@@ -203,7 +203,9 @@ html { scroll-behavior: smooth; }
       <div class="tbl"><table>
         <thead><tr><th>Surface</th><th>Where</th><th>State</th></tr></thead>
         <tbody>
-          <tr><td>Web app</td><td><a href="https://debojyoti10cc.github.io/oorka/">debojyoti10cc.github.io/oorka</a></td><td><span class="tag ok">live</span></td></tr>
+          <tr><td>Web app</td><td><a href="https://oorka.djyo.tech">oorka.djyo.tech</a></td><td><span class="tag ok">live</span></td></tr>
+          <tr><td>Docs</td><td><a href="https://oorkadocs.djyo.tech">oorkadocs.djyo.tech</a></td><td><span class="tag ok">live</span></td></tr>
+          <tr><td>OorkaPulse</td><td class="mono"><a href="https://lasna.reactscan.net/address/0xdbb33964d494e7cabfb90656d682f3b09f42ba9d">0xdbb33964d494e7cabfb90656d682f3b09f42ba9d</a></td><td><span class="tag ok">Reactive Lasna · event-driven</span></td></tr>
           <tr><td>OorkaHook</td><td class="mono"><a href="https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0">0xbeEcbe71d831880f2038Bc35b613e100F1f010A0</a></td><td><span class="tag ok">Unichain Sepolia</span></td></tr>
           <tr><td>OorkaKeeper</td><td class="mono"><a href="https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5">0x53b31469cf03ae9f0042c7d6cbeed46750e22da5</a></td><td><span class="tag ok">settling</span></td></tr>
           <tr><td>OorkaReactive</td><td class="mono"><a href="https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450">0x86c807a7a56c63472d52c46ebd2441d2067d7450</a></td><td><span class="tag ok">Reactive Lasna · Cron1000</span></td></tr>
@@ -458,7 +460,7 @@ NAV      = value(position + fees + cash, blockOpenPrice)        // in tUSD</pre>
         <li><strong>Failure handling:</strong> a failed settle emits <code>SettleFailed</code> and retries next tick. Debt blocks delivery, so <code>setPaused(false)</code> covers debt before resubscribing.</li>
         <li><strong>History:</strong> the first keeper used the old reactive-lib <code>vmOnly</code> guard and reverted with "VM only" after Reactive changed models. It was ported, redeployed, and the old contract paused.</li>
       </ul>
-      <div class="callout warn"><strong>Top up before judging.</strong> At the current rate the balance lasts until about 1 Dec. Judging runs 4 to 10 Dec. Send Lasna REACT to the reactive contract via <code>depositTo(reactive)</code> on the system contract, or claim more Sepolia ETH and use the faucet bridge. The steps are in <code>OORKA_HOOKATHON_PLAN.md</code>.</div>
+      <div class="callout warn"><strong>Top up before judging.</strong> The CRON contract's 3.4 lREACT lasts until about 1 Dec; Pulse's 5.1 lREACT lasts about two weeks. Judging runs 4 to 10 Dec. Send Lasna REACT to the reactive contract via <code>depositTo(reactive)</code> on the system contract, or claim more Sepolia ETH and use the faucet bridge. The steps are in <code>OORKA_HOOKATHON_PLAN.md</code>.</div>
     </section>
 
     <section id="market">
