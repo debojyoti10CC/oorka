@@ -104,8 +104,8 @@ flowchart TB
 | **OorkaHook** (hook + vault + curator registry) | Unichain Sepolia | [`0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0`](https://sepolia.uniscan.xyz/address/0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0) |
 | **OorkaPulse** (event-driven: reacts to pool swaps) | Reactive Lasna | [`0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa`](https://lasna.reactscan.net/address/0x0ee3b94d3eaa4b99c8c9840f3ab6139bbd9633aa) |
 | **OorkaKeeper (Pulse)** | Unichain Sepolia | [`0x6716dad1ad8a91ce35b368466948d25efe48e3ee`](https://sepolia.uniscan.xyz/address/0x6716dad1ad8a91ce35b368466948d25efe48e3ee) |
-| **OorkaKeeper (CRON)** | Unichain Sepolia | [`0x53b31469cf03ae9f0042c7d6cbeed46750e22da5`](https://sepolia.uniscan.xyz/address/0x53b31469cf03ae9f0042c7d6cbeed46750e22da5) |
-| **OorkaReactive** (CRON fallback) | Reactive Lasna | [`0x86c807a7a56c63472d52c46ebd2441d2067d7450`](https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450) |
+| **OorkaKeeper (CRON)** | Unichain Sepolia | [`0x75f6f1d2d9e3f0d321cccdf8502d9813df4d3241`](https://sepolia.uniscan.xyz/address/0x75f6f1d2d9e3f0d321cccdf8502d9813df4d3241) |
+| **OorkaReactive** (CRON fallback) | Reactive Lasna | [`0xdf4a40dd91683a72cea16175b40bbba2d9b48a3e`](https://lasna.reactscan.net/address/0xdf4a40dd91683a72cea16175b40bbba2d9b48a3e) |
 | Uniswap v4 PoolManager | Unichain Sepolia | [`0x00b036b58a818b1bc34d502d3fe730db729e62ac`](https://sepolia.uniscan.xyz/address/0x00b036b58a818b1bc34d502d3fe730db729e62ac) |
 | USDC (Circle) / WETH | Unichain Sepolia | [`0x31d0…768F`](https://sepolia.uniscan.xyz/address/0x31d0220469e10c4E71834a79b1f276d740d3768F) / [`0x4200…0006`](https://sepolia.uniscan.xyz/address/0x4200000000000000000000000000000000000006) |
 
@@ -154,7 +154,7 @@ sequenceDiagram
     H-->>P: EpochSettled log resets Pulse's clock
 ```
 
-**Measured live:** origin swap to `Settled` callback in **2 s** (swap `0x1059affe…d603`, reactive tx `0x2c2a0652…672c`, callback `0x306dd6f7…dd54`). The CRON timer alone could take up to 17 minutes.
+**Measured live (first deployment):** origin swap to `Settled` callback in **2 s** (swap `0x1059affe…d603`, reactive tx `0x2c2a0652…672c`, callback `0x306dd6f7…dd54`). The CRON timer alone could take up to 17 minutes.
 
 **Safeguards.** A 30-second cooldown stops swap bursts from requesting callback bursts. Logs from any other pool, chain or contract are ignored. Pulse only calls the same keeper path anyone could, and the hook re-checks the epoch end and the price itself. The CRON keeper below keeps running as the fallback for quiet pools, and `settleEpoch()` stays permissionless. Details: [docs](https://oorkadocs.djyo.tech/keeper/pulse).
 
@@ -191,8 +191,8 @@ sequenceDiagram
 - **`OorkaKeeper`** only accepts the Reactive callback proxy **and** only when the network-injected sender is our own `OorkaReactive`. Ended epoch → settle; otherwise `Idle`. A failed settle emits `SettleFailed` and retries next tick.
 - The keeper has **no special rights** on the hook. It only adds liveness. A takeover settle uses under 1.5M gas, half the 3M callback budget (checked in the tests).
 
-<a href="https://lasna.reactscan.net/address/0x86c807a7a56c63472d52c46ebd2441d2067d7450"><img src="docs/readme/reactscan.jpg" alt="OorkaReactive on Reactscan: 13 reactive executions, 13 callbacks, zero debt" width="100%"></a>
-<p align="center"><sub>OorkaReactive on Reactscan Lasna: every CRON tick executed and called back to the keeper, zero debt.</sub></p>
+<a href="https://lasna.reactscan.net/address/0xdf4a40dd91683a72cea16175b40bbba2d9b48a3e"><img src="docs/readme/reactscan.jpg" alt="OorkaReactive on Reactscan: 13 reactive executions, 13 callbacks, zero debt" width="100%"></a>
+<p align="center"><sub>The CRON fallback on Reactscan Lasna (screenshot from the first deployment): every tick executed and called back to the keeper, zero debt.</sub></p>
 
 <details>
 <summary><b>Deploy the keeper yourself</b></summary>

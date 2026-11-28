@@ -5,7 +5,7 @@
   "swapRouter": "0xa93b93a962d8b00d409f084f2262c0a773b2e0dd",
   "lpRouter": "0xbe8e4ed28186051fecf425ba945a4a687f827c77",
   "hook": "0xd3F75e4DF6d0Cd75B17B66d577216f1F0630d0A0",
-  "keeper": null,
+  "keeper": "0x75f6f1d2d9e3f0d321cccdf8502d9813df4d3241",
   "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1",
   "token0": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
   "token1": "0x4200000000000000000000000000000000000006",
@@ -32,5 +32,13 @@
     "poolId": "0x812a0fc62bc1d8021aaf6ee3fb5ac0d0adec725120f3fe6bec77a9508199382a",
     "cooldown": 30,
     "deployTx": "0x0049e58411dca1b18d788d03cbe671c8e9921fffe014ee2ffd5e34ed5f70a076"
+  },
+  "reactive": {
+    "chainId": 5318007,
+    "rpcUrl": "https://lasna-rpc.rnk.dev/",
+    "contract": "0xdf4a40dd91683a72cea16175b40bbba2d9b48a3e",
+    "cronTopic": "Cron1000",
+    "ticksPerPoke": 1,
+    "deployTx": "0x0b246fc2ee77e329e66beed66d5a55ff71520a4e39a455d09f3261fe632e27fe"
   }
 }
