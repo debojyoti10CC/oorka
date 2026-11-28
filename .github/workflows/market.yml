@@ -39,7 +39,7 @@ jobs:
         run: |
           for i in $(seq 1 21); do
             node scripts/market.mjs || echo "run $i failed, continuing"
-            [ "$i" -lt 21 ] && sleep 900
+            if [ "$i" -lt 21 ]; then sleep 900; fi
           done
       - name: Start the next run
         if: always()
