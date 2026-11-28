@@ -14,7 +14,7 @@ A Uniswap v4 hook where the right to manage a vault's liquidity is won, and kept
 ![Uniswap v4](https://img.shields.io/badge/Uniswap-v4%20hook-ff007a)
 ![Unichain Sepolia](https://img.shields.io/badge/live%20on-Unichain%20Sepolia-7c3aed)
 ![Reactive Network](https://img.shields.io/badge/keeper-Reactive%20Network-171717)
-![Tests](https://img.shields.io/badge/tests-46%20%2B%205%20invariants-15803d)
+![Tests](https://img.shields.io/badge/tests-61%20%2B%205%20invariants-15803d)
 
 [**Live app**](https://oorka.djyo.tech) · [**Arena**](https://oorka.djyo.tech/#/arena) · [**Docs**](https://oorkadocs.djyo.tech) · [**Whitepaper**](whitepaper/oorka-whitepaper.pdf) · [**Hook on Uniscan**](https://sepolia.uniscan.xyz/address/0xbeEcbe71d831880f2038Bc35b613e100F1f010A0) · [**Run it locally**](#run-it)
 
